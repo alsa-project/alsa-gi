@@ -17,8 +17,8 @@ libalsacard_la_LIBADD =				\
 	$(GIO_LIBS)
 
 libalsacard_la_SOURCES =			\
-	alsacard.h				\
-	alsacard.c
+	card.h					\
+	card.c
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =

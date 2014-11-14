@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "alsacard.h"
+#include "card.h"
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
