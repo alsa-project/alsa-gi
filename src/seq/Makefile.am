@@ -12,7 +12,7 @@ lib_LTLIBRARIES =				\
 	libalsaseq.la
 
 libalsaseq_la_LIBADD =				\
-	-lhinawa				\
+	-lasound				\
 	$(GLIB_LIBS)				\
 	$(GIO_LIBS)
 
@@ -35,8 +35,7 @@ ALSASeq_1_0_gir_LIBS = libalsaseq.la
 ALSASeq_1_0_gir_FILES = $(libalsaseq_la_SOURCES)
 ALSASeq_1_0_gir_SCANNERFLAGS =			\
 	--identifier-prefix=ALSASeq		\
-	--symbol-prefix=alsaseq			\
-	-lasound
+	--symbol-prefix=alsaseq
 INTROSPECTION_GIRS += ALSASeq-1.0.gir
 
 girdir = $(datadir)/gir-1.0

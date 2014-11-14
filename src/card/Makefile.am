@@ -12,11 +12,11 @@ lib_LTLIBRARIES =				\
 	libalsacard.la
 
 libalsacard_la_LIBADD =				\
-	-lhinawa				\
+	-lasound				\
 	$(GLIB_LIBS)				\
 	$(GIO_LIBS)
 
-libalsacard_la_SOURCES =				\
+libalsacard_la_SOURCES =			\
 	alsacard.h				\
 	alsacard.c
 
@@ -35,8 +35,7 @@ ALSACard_1_0_gir_LIBS = libalsacard.la
 ALSACard_1_0_gir_FILES = $(libalsacard_la_SOURCES)
 ALSACard_1_0_gir_SCANNERFLAGS =			\
 	--identifier-prefix=ALSACard		\
-	--symbol-prefix=alsacard			\
-	-lasound
+	--symbol-prefix=alsacard
 INTROSPECTION_GIRS += ALSACard-1.0.gir
 
 girdir = $(datadir)/gir-1.0

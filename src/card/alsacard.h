@@ -6,7 +6,7 @@
 
 G_BEGIN_DECLS
 
-#define ALSACARD_TYPE_SND_UNIT	(alsaseq_snd_unit_get_type())
+#define ALSACARD_TYPE_SND_UNIT	(alsacard_snd_unit_get_type())
 
 #define ALSACARD_SND_UNIT(obj)					\
 	(G_TYPE_CHECK_INSTANCE_CAST((obj),			\
@@ -44,10 +44,10 @@ struct _ALSACardSndUnitClass
     GObjectClass parent_class;
 };
 
-GType alsaseq_snd_unit_get_type(void) G_GNUC_CONST;
+GType alsacard_snd_unit_get_type(void) G_GNUC_CONST;
 
 typedef void (*ALSACardSndUnitCB)(ALSACardSndUnit* unit, void *private_data, gint val);
 
-ALSACardSndUnit *alsaseq_snd_unit_new(gchar *str);
+ALSACardSndUnit *alsacard_snd_unit_new(gchar *str);
 
 #endif

@@ -1,7 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <libhinawa/hinawa.h>
 #include "alsaseq.h"
 
 #ifdef HAVE_CONFIG_H
@@ -9,7 +9,7 @@
 #endif
 
 struct _ALSASeqSndUnitPrivate {
-	HinawaSndUnit *unit;
+	gchar *unit;
 };
 G_DEFINE_TYPE_WITH_PRIVATE (ALSASeqSndUnit, alsaseq_snd_unit, G_TYPE_OBJECT)
 
@@ -27,7 +27,7 @@ static void alsaseq_snd_unit_finalize (GObject *gobject)
 	ALSASeqSndUnit *self = ALSASeq_SND_UNIT(gobject);
 
 	if (self->priv->unit)
-		hinawa_snd_unit_destroy(self->priv->unit);
+		free(self->priv->unit);
 
 	G_OBJECT_CLASS(alsaseq_snd_unit_parent_class)->finalize (gobject);
 
