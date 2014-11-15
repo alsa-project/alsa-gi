@@ -75,7 +75,7 @@ ALSASeqSeq *alsaseq_seq_new(gchar *node, GError **exception)
 
 const gchar *alsaseq_seq_get_name(ALSASeqSeq *self)
 {
-	return snd_seq_name(self->priv->handle);
+	return g_strdup(snd_seq_name(self->priv->handle));
 }
 
 gint alsaseq_seq_get_client_id(ALSASeqSeq *self)
