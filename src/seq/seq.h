@@ -6,48 +6,56 @@
 
 G_BEGIN_DECLS
 
-#define ALSASeq_TYPE_SND_UNIT	(alsaseq_snd_unit_get_type())
+#define ALSASEQ_TYPE_SEQ	(alsaseq_seq_get_type())
 
-#define ALSASeq_SND_UNIT(obj)					\
+#define ALSASEQ_SEQ(obj)					\
 	(G_TYPE_CHECK_INSTANCE_CAST((obj),			\
-				    ALSASeq_TYPE_SND_UNIT,	\
-				    ALSASeqSndUnit))
-#define ALSASeq_IS_SND_UNIT(obj)					\
+				    ALSASEQ_TYPE_SEQ,		\
+				    ALSASeqSeq))
+#define ALSASEQ_IS_SEQ(obj)					\
 	(G_TYPE_CHECK_INSTANCE_TYPE((obj),			\
-				    ALSASeq_TYPE_SND_UNIT))
+				    ALSASEQ_TYPE_SEQ))
 
-#define ALSASeq_SND_UNIT_CLASS(klass)				\
+#define ALSASEQ_SEQ_CLASS(klass)				\
 	(G_TYPE_CHECK_CLASS_CAST((klass),			\
-				 ALSASeq_TYPE_SND_UNIT,		\
-				 ALSASeqSndUnitClass))
-#define ALSASeq_IS_SND_UNIT_CLASS(klass)				\
+				 ALSASEQ_TYPE_SND_UNIT,		\
+				 ALSASeqSeqClass))
+#define ALSASEQ_IS_SEQ_CLASS(klass)				\
 	(G_TYPE_CHECK_CLASS_TYPE((klass),			\
-				 ALSASeq_TYPE_SND_UNIT))
-#define ALSASeq_SND_UNIT_GET_CLASS(obj) 				\
+				 ALSASEQ_TYPE_Seq))
+#define ALSASEQ_SND_UNIT_GET_CLASS(obj) 			\
 	(G_TYPE_INSTANCE_GET_CLASS((obj),			\
-				   ALSASeq_TYPE_SND_UNIT,	\
-				   ALSASeqSndUnitClass))
+				   ALSASEQ_TYPE_SEQ,		\
+				   ALSASeqSeqClass))
 
-typedef struct _ALSASeqSndUnit		ALSASeqSndUnit;
-typedef struct _ALSASeqSndUnitClass	ALSASeqSndUnitClass;
-typedef struct _ALSASeqSndUnitPrivate	ALSASeqSndUnitPrivate;
+typedef struct _ALSASeqSeq		ALSASeqSeq;
+typedef struct _ALSASeqSeqClass	ALSASeqSeqClass;
+typedef struct _ALSASeqSeqPrivate	ALSASeqSeqPrivate;
 
-struct _ALSASeqSndUnit
+struct _ALSASeqSeq
 {
 	GObject parent_instance;
 
-	ALSASeqSndUnitPrivate *priv;
+	ALSASeqSeqPrivate *priv;
 };
 
-struct _ALSASeqSndUnitClass
+struct _ALSASeqSeqClass
 {
     GObjectClass parent_class;
 };
 
-GType alsaseq_snd_unit_get_type(void) G_GNUC_CONST;
+GType alsaseq_seq_get_type(void) G_GNUC_CONST;
 
-typedef void (*ALSASeqSndUnitCB)(ALSASeqSndUnit* unit, void *private_data, gint val);
+ALSASeqSeq *alsaseq_seq_new(gchar *str);
+//ALSASeqSeq *alsaseq_seq_new_lconf(gchar *node, gpointer *lconf);
 
-ALSASeqSndUnit *alsaseq_snd_unit_new(gchar *str);
+const gchar *alsaseq_seq_get_name(ALSASeqSeq *self);
+int alsaseq_seq_get_client_id(ALSASeqSeq *self);
+
+guint alsaseq_seq_get_output_buffer_size(ALSASeqSeq *self);
+gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size);
+guint alsaseq_seq_get_input_buffer_size(ALSASeqSeq *self);
+gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size);
+
 
 #endif

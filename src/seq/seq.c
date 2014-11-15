@@ -1,57 +1,95 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#include <alsa/asoundlib.h>
 #include "seq.h"
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
 
-struct _ALSASeqSndUnitPrivate {
-	gchar *unit;
+struct _ALSASeqSeqPrivate {
+	snd_seq_t *handle;
 };
-G_DEFINE_TYPE_WITH_PRIVATE (ALSASeqSndUnit, alsaseq_snd_unit, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE (ALSASeqSeq, alsaseq_seq, G_TYPE_OBJECT)
 
-static void alsaseq_snd_unit_dispose(GObject *gobject)
+static void alsaseq_seq_dispose(GObject *gobject)
 {
-	G_OBJECT_CLASS (alsaseq_snd_unit_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS (alsaseq_seq_parent_class)->dispose(gobject);
 }
 
 /*
 gobject_new() -> g_clear_object()
 */
 
-static void alsaseq_snd_unit_finalize (GObject *gobject)
+static void alsaseq_seq_finalize (GObject *gobject)
 {
-	ALSASeqSndUnit *self = ALSASeq_SND_UNIT(gobject);
+	ALSASeqSeq *self = ALSASEQ_SEQ(gobject);
 
-	if (self->priv->unit)
-		free(self->priv->unit);
+	if (self->priv->handle != NULL)
+		snd_seq_close(self->priv->handle);
 
-	G_OBJECT_CLASS(alsaseq_snd_unit_parent_class)->finalize (gobject);
-
-	printf("destroy\n");
+	G_OBJECT_CLASS(alsaseq_seq_parent_class)->finalize (gobject);
 }
 
-static void alsaseq_snd_unit_class_init(ALSASeqSndUnitClass *klass)
+static void alsaseq_seq_class_init(ALSASeqSeqClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-	gobject_class->dispose = alsaseq_snd_unit_dispose;
-	gobject_class->finalize = alsaseq_snd_unit_finalize;
-
-	printf("class initialized\n");
+	gobject_class->dispose = alsaseq_seq_dispose;
+	gobject_class->finalize = alsaseq_seq_finalize;
 }
 
 static void
-alsaseq_snd_unit_init(ALSASeqSndUnit *self)
+alsaseq_seq_init(ALSASeqSeq *self)
 {
-	self->priv = alsaseq_snd_unit_get_instance_private(self);
-	printf("init\n");
+	self->priv = alsaseq_seq_get_instance_private(self);
 }
 
-ALSASeqSndUnit *alsaseq_snd_unit_new(gchar *str)
+ALSASeqSeq *alsaseq_seq_new(gchar *node)
 {
-    return g_object_new(ALSASeq_TYPE_SND_UNIT, NULL);;
+	ALSASeqSeq *self;
+	snd_seq_t *handle;
+
+	/* Always open duplex ports. */
+	if (snd_seq_open(&handle, node, SND_SEQ_OPEN_DUPLEX, 0) < 0)
+		return NULL;
+
+	self = g_object_new(ALSASEQ_TYPE_SEQ, NULL);
+	self->priv->handle = handle;
+
+	return self;
+}
+
+const gchar *alsaseq_seq_get_name(ALSASeqSeq *self)
+{
+	return snd_seq_name(self->priv->handle);
+}
+
+gint alsaseq_seq_get_client_id(ALSASeqSeq *self)
+{
+	return snd_seq_client_id(self->priv->handle);
+}
+
+guint alsaseq_seq_get_output_buffer_size(ALSASeqSeq *self)
+{
+	return snd_seq_get_output_buffer_size(self->priv->handle);
+}
+
+gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size)
+{
+	int err;
+	/* TODO: error handling */
+	err = snd_seq_set_output_buffer_size(self->priv->handle, size);
+	return err == 0;
+}
+
+guint alsaseq_seq_get_input_buffer_size(ALSASeqSeq *self)
+{
+	return snd_seq_get_input_buffer_size(self->priv->handle);
+}
+
+gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size)
+{
+	int err;
+	/* TODO: error handling */
+	err = snd_seq_set_input_buffer_size(self->priv->handle, size);
+	return err == 0;
 }
