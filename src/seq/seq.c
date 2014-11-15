@@ -86,6 +86,9 @@ guint alsaseq_seq_get_input_buffer_size(ALSASeqSeq *self)
 	return snd_seq_get_input_buffer_size(self->priv->handle);
 }
 
+/*
+ * Aligned to sizeof(snd_seq_event_t) automatically.
+ */
 gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size)
 {
 	int err;

@@ -18,12 +18,12 @@ G_BEGIN_DECLS
 
 #define ALSASEQ_SEQ_CLASS(klass)				\
 	(G_TYPE_CHECK_CLASS_CAST((klass),			\
-				 ALSASEQ_TYPE_SND_UNIT,		\
+				 ALSASEQ_TYPE_SEQ,		\
 				 ALSASeqSeqClass))
 #define ALSASEQ_IS_SEQ_CLASS(klass)				\
 	(G_TYPE_CHECK_CLASS_TYPE((klass),			\
 				 ALSASEQ_TYPE_Seq))
-#define ALSASEQ_SND_UNIT_GET_CLASS(obj) 			\
+#define ALSASEQ_SEQ_GET_CLASS(obj) 				\
 	(G_TYPE_INSTANCE_GET_CLASS((obj),			\
 				   ALSASEQ_TYPE_SEQ,		\
 				   ALSASeqSeqClass))
