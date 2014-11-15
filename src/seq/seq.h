@@ -1,5 +1,5 @@
-#ifndef HINAWA_SND_H
-#define HINAWA_SND_H
+#ifndef __ALSASEQ_SEQ_H__
+#define __ALSASEQ_SEQ_H__
 
 #include <glib-object.h>
 #include <gio/gio.h>
@@ -46,16 +46,17 @@ struct _ALSASeqSeqClass
 
 GType alsaseq_seq_get_type(void) G_GNUC_CONST;
 
-ALSASeqSeq *alsaseq_seq_new(gchar *str);
+ALSASeqSeq *alsaseq_seq_new(gchar *str, GError **exception);
 //ALSASeqSeq *alsaseq_seq_new_lconf(gchar *node, gpointer *lconf);
 
 const gchar *alsaseq_seq_get_name(ALSASeqSeq *self);
 int alsaseq_seq_get_client_id(ALSASeqSeq *self);
 
 guint alsaseq_seq_get_output_buffer_size(ALSASeqSeq *self);
-gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size);
+gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size,
+					    GError **exception);
 guint alsaseq_seq_get_input_buffer_size(ALSASeqSeq *self);
-gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size);
-
+gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size,
+					    GError **exception);
 
 #endif

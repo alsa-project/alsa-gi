@@ -43,14 +43,19 @@ alsaseq_seq_init(ALSASeqSeq *self)
 	self->priv = alsaseq_seq_get_instance_private(self);
 }
 
-ALSASeqSeq *alsaseq_seq_new(gchar *node)
+ALSASeqSeq *alsaseq_seq_new(gchar *node, GError **exception)
 {
 	ALSASeqSeq *self;
 	snd_seq_t *handle;
+	int err;
 
 	/* Always open duplex ports. */
-	if (snd_seq_open(&handle, node, SND_SEQ_OPEN_DUPLEX, 0) < 0)
+	err = snd_seq_open(&handle, node, SND_SEQ_OPEN_DUPLEX, 0);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
 		return NULL;
+	}
 
 	self = g_object_new(ALSASEQ_TYPE_SEQ, NULL);
 	self->priv->handle = handle;
@@ -73,11 +78,17 @@ guint alsaseq_seq_get_output_buffer_size(ALSASeqSeq *self)
 	return snd_seq_get_output_buffer_size(self->priv->handle);
 }
 
-gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size)
+gboolean alsaseq_seq_set_output_buffer_size(ALSASeqSeq *self, guint size,
+					    GError **exception)
 {
 	int err;
-	/* TODO: error handling */
+
 	err = snd_seq_set_output_buffer_size(self->priv->handle, size);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+	}
+
 	return err == 0;
 }
 
@@ -89,10 +100,16 @@ guint alsaseq_seq_get_input_buffer_size(ALSASeqSeq *self)
 /*
  * Aligned to sizeof(snd_seq_event_t) automatically.
  */
-gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size)
+gboolean alsaseq_seq_set_input_buffer_size(ALSASeqSeq *self, guint size,
+					   GError **exception)
 {
 	int err;
-	/* TODO: error handling */
+
 	err = snd_seq_set_input_buffer_size(self->priv->handle, size);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+	}
+
 	return err == 0;
 }
