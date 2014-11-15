@@ -15,9 +15,18 @@ static void alsaseq_seq_dispose(GObject *gobject)
 	G_OBJECT_CLASS (alsaseq_seq_parent_class)->dispose(gobject);
 }
 
-/*
-gobject_new() -> g_clear_object()
-*/
+static void alseseq_seq_get_property(GObject *obj, guint id,
+				     GValue *val, GParamSpec *spec)
+{
+	ALSASeqSeq *self = ALSASEQ_SEQ(obj);
+
+	if (id != 0) {
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, id, spec);
+		return;
+	}
+
+	g_value_set_pointer(val, self->priv->handle);
+}
 
 static void alsaseq_seq_finalize (GObject *gobject)
 {
@@ -33,6 +42,7 @@ static void alsaseq_seq_class_init(ALSASeqSeqClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+	gobject_class->get_property = alseseq_seq_get_property;
 	gobject_class->dispose = alsaseq_seq_dispose;
 	gobject_class->finalize = alsaseq_seq_finalize;
 }
