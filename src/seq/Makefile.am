@@ -19,6 +19,8 @@ libalsaseq_la_LIBADD =				\
 libalsaseq_la_SOURCES =				\
 	client_info.h				\
 	client_info.c				\
+	system_info.h				\
+	system_info.c				\
 	client.h				\
 	client.c
 

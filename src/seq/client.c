@@ -224,3 +224,47 @@ void alsaseq_client_set_info(ALSASeqClient *client, ALSASeqClientInfo *info,
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));
 }
+
+/**
+ * alsaseq_client_get_system_info:
+ *
+ * Return a new #ALSASeqSystemInfo.
+ *
+ * Returns: (transfer full): a new #ALSASeqSystemInfo.
+ */
+ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
+						  GError **exception)
+{
+	ALSASeqSystemInfo *info;
+	snd_seq_t *client_handle;
+	snd_seq_system_info_t *info_handle;
+	GValue val = G_VALUE_INIT;
+	int err;
+
+	/* Check handle is already retrieved. */
+	client_handle = client->priv->handle;
+	if  (client_handle == NULL) {
+		err = -EINVAL;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		return NULL;
+	}
+
+	/* Generate info object. */
+	info = g_object_new(ALSASEQ_TYPE_SYSTEM_INFO, NULL);
+
+	/* Get info handle. */
+	g_value_init(&val, G_TYPE_POINTER);
+	g_object_get_property(G_OBJECT(info), "handle", &val);
+	info_handle = g_value_get_pointer(&val);
+
+	err = snd_seq_system_info(client_handle, info_handle);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		g_clear_object(&info);
+		return NULL;
+	}
+
+	return info;
+}

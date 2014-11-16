@@ -4,6 +4,7 @@
 #include <glib-object.h>
 #include <gio/gio.h>
 #include "client_info.h"
+#include "system_info.h"
 
 G_BEGIN_DECLS
 
@@ -64,4 +65,7 @@ ALSASeqClientInfo *alsaseq_client_get_info(ALSASeqClient *client,
 					   GError **exception);
 void alsaseq_client_set_info(ALSASeqClient *client, ALSASeqClientInfo *info,
 			     GError **exception);
+
+ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
+						  GError **exception);
 #endif

@@ -59,3 +59,15 @@ except Exception as e:
 	exit()
 print("new info:")
 print("	name:	{0}".format(info.get_name()))
+
+try:
+	system = client.get_system_info()
+except Exception as e:
+	print(e)
+	exit()
+print("system:")
+print("	queues:		{0}".format(system.get_max_queues()))
+print("	clients:	{0}".format(system.get_max_clients()))
+print("	ports:		{0}".format(system.get_max_ports()))
+print("	cur queues:	{0}".format(system.get_cur_queues()))
+print("	cur clients:	{0}".format(system.get_cur_clients()))
