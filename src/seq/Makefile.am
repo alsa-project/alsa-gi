@@ -17,8 +17,10 @@ libalsaseq_la_LIBADD =				\
 	$(GIO_LIBS)
 
 libalsaseq_la_SOURCES =				\
-	seq.h					\
-	seq.c
+	client_info.h				\
+	client_info.c				\
+	client.h				\
+	client.c
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
