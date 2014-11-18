@@ -5,6 +5,7 @@
 #include <gio/gio.h>
 #include "client_info.h"
 #include "system_info.h"
+#include "port_info.h"
 
 G_BEGIN_DECLS
 
@@ -68,4 +69,9 @@ void alsaseq_client_set_info(ALSASeqClient *client, ALSASeqClientInfo *info,
 
 ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
 						  GError **exception);
+
+ALSASeqPortInfo *alsaseq_client_create_port(ALSASeqClient *client,
+					    GError **exception);
+void alsaseq_client_delete_port(ALSASeqClient *client, guint id,
+				GError **exception);
 #endif

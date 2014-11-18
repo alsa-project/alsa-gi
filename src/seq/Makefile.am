@@ -21,6 +21,8 @@ libalsaseq_la_SOURCES =				\
 	client_info.c				\
 	system_info.h				\
 	system_info.c				\
+	port_info.h				\
+	port_info.c				\
 	client.h				\
 	client.c
 

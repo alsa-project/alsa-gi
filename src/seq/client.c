@@ -173,7 +173,6 @@ ALSASeqClientInfo *alsaseq_client_get_info(ALSASeqClient *client,
 	ALSASeqClientInfo *info;
 	snd_seq_t *client_handle;
 	snd_seq_client_info_t *info_handle;
-	GValue val = G_VALUE_INIT;
 	int err;
 
 	/* Check handle is already retrieved. */
@@ -187,11 +186,7 @@ ALSASeqClientInfo *alsaseq_client_get_info(ALSASeqClient *client,
 
 	/* Generate info object. */
 	info = g_object_new(ALSASEQ_TYPE_CLIENT_INFO, NULL);
-
-	/* Get info handle. */
-	g_value_init(&val, G_TYPE_POINTER);
-	g_object_get_property(G_OBJECT(info), "handle", &val);
-	info_handle = g_value_get_pointer(&val);
+	g_object_get(G_OBJECT(info), "handle", &info_handle, NULL);
 
 	err = snd_seq_get_client_info(client_handle, info_handle);
 	if (err < 0) {
@@ -209,14 +204,9 @@ void alsaseq_client_set_info(ALSASeqClient *client, ALSASeqClientInfo *info,
 {
 	snd_seq_t *client_handle;
 	snd_seq_client_info_t *info_handle;
-	GValue val = G_VALUE_INIT;
 	int err;
 
-	/* Get info handle. */
-	g_value_init(&val, G_TYPE_POINTER);
-	g_object_get_property(G_OBJECT(info), "handle", &val);
-	info_handle = g_value_get_pointer(&val);
-
+	g_object_get(G_OBJECT(info), "handle", &info_handle, NULL);
 	client_handle = client->priv->handle;
 
 	err = snd_seq_set_client_info(client_handle, info_handle);
@@ -238,7 +228,6 @@ ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
 	ALSASeqSystemInfo *info;
 	snd_seq_t *client_handle;
 	snd_seq_system_info_t *info_handle;
-	GValue val = G_VALUE_INIT;
 	int err;
 
 	/* Check handle is already retrieved. */
@@ -252,11 +241,7 @@ ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
 
 	/* Generate info object. */
 	info = g_object_new(ALSASEQ_TYPE_SYSTEM_INFO, NULL);
-
-	/* Get info handle. */
-	g_value_init(&val, G_TYPE_POINTER);
-	g_object_get_property(G_OBJECT(info), "handle", &val);
-	info_handle = g_value_get_pointer(&val);
+	g_object_get(G_OBJECT(info), "handle", &info_handle, NULL);
 
 	err = snd_seq_system_info(client_handle, info_handle);
 	if (err < 0) {
@@ -267,4 +252,123 @@ ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
 	}
 
 	return info;
+}
+
+/**
+ * alsaseq_client_create_port:
+ *
+ * Return a new #ALSASeqPortInfo.
+ *
+ * Returns: (transfer full): a new #ALSASeqPortInfo.
+ */
+ALSASeqPortInfo *alsaseq_client_create_port(ALSASeqClient *client,
+					    GError **exception)
+{
+	ALSASeqPortInfo *port_info;
+	snd_seq_t *client_handle;
+	snd_seq_port_info_t *port_info_handle;
+	unsigned int id;
+	int err;
+
+	/* Check handle is already retrieved. */
+	client_handle = client->priv->handle;
+	if  (client_handle == NULL) {
+		err = -EINVAL;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		return NULL;
+	}
+
+	/* Generate info object. */
+	port_info = g_object_new(ALSASEQ_TYPE_PORT_INFO, NULL);
+	g_object_get(G_OBJECT(port_info), "handle", &port_info_handle, NULL);
+
+	/* Create new port. */
+	err = snd_seq_create_port(client_handle, port_info_handle);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		g_clear_object(&port_info);
+		return NULL;
+	}
+
+	return port_info;
+}
+
+void alsaseq_client_delete_port(ALSASeqClient *client, guint id,
+				GError **exception)
+{
+	snd_seq_t *client_handle;
+	GValue val = G_VALUE_INIT;
+	int err;
+
+	/* Check handle is already retrieved. */
+	client_handle = client->priv->handle;
+	if  (client_handle == NULL) {
+		err = -EINVAL;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		return;
+	}
+
+	err = snd_seq_delete_port(client_handle, id);
+	if (err < 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+}
+
+/**
+ * alsaseq_client_get_port_info:
+ *
+ * Return a new #ALSASeqPortInfo.
+ *
+ * Returns: (transfer full): a new #ALSASeqPortInfo.
+ */
+ALSASeqPortInfo *alsaseq_client_get_port_info(ALSASeqClient *client, guint id,
+					      GError **exception)
+{
+	ALSASeqPortInfo *port_info;
+	snd_seq_t *client_handle;
+	snd_seq_port_info_t *port_info_handle;
+	int err;
+
+	/* Check handle is already retrieved. */
+	client_handle = client->priv->handle;
+	if  (client_handle == NULL) {
+		err = -EINVAL;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		return NULL;
+	}
+
+	/* Generate info object. */
+	port_info = g_object_new(ALSASEQ_TYPE_PORT_INFO, NULL);
+	g_object_get(G_OBJECT(port_info), "handle", port_info_handle, NULL);
+
+	err = snd_seq_get_port_info(client_handle, id, port_info_handle);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+		g_clear_object(&port_info);
+		return NULL;
+	}
+
+	return port_info;
+}
+
+void alsaseq_client_set_port_info(ALSASeqClient *client, guint id,
+				  ALSASeqPortInfo *port_info,
+				  GError **exception)
+{
+	snd_seq_t *client_handle;
+	snd_seq_port_info_t *port_info_handle;
+	int err;
+
+	g_object_get(G_OBJECT(port_info), "handle", &port_info_handle, NULL);
+	client_handle = client->priv->handle;
+
+	err = snd_seq_set_port_info(client_handle, id, port_info_handle);
+	if (err < 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
 }

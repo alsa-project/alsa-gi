@@ -71,3 +71,21 @@ print("	clients:	{0}".format(system.get_max_clients()))
 print("	ports:		{0}".format(system.get_max_ports()))
 print("	cur queues:	{0}".format(system.get_cur_queues()))
 print("	cur clients:	{0}".format(system.get_cur_clients()))
+try:
+	port = client.create_port()
+except Exception as e:
+	print(e)
+	exit()
+print("port:")
+print("	name:		{0}".format(port.get_property("name")));
+print("	capabilities:	{0}".format(port.get_property("capabilities")));
+print("	type:		{0}".format(port.get_property("type")));
+print("	midi channels:	{0}".format(port.get_property("midi_channels")));
+print("	midi voices:	{0}".format(port.get_property("midi_voices")));
+print("	synth voices:	{0}".format(port.get_property("synth_voices")));
+print("	read use:	{0}".format(port.get_property("read_use")));
+print("	write use:	{0}".format(port.get_property("write_use")));
+print("	port specified	{0}".format(port.get_property("port_specified")))
+print("	timestamping	{0}".format(port.get_property("timestamping")))
+print("	real timestamp	{0}".format(port.get_property("timestamp_real")))
+print("	queue ID for timestamp	{0}".format(port.get_property("timestamp_queue")))
