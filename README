@@ -1,0 +1,29 @@
+GObject introspection library for ALSA userspace library
+
+Requirements:
+- Linux with ALSA
+- alsa-lib
+- autoconf
+- automake
+- glib-2.0
+- gobject-2.0
+
+How to build:
+ $ ./autogen.sh
+ $ ./configure
+ $ make
+ $ make install
+
+How to test:
+ (needless to install)
+ $ ./autogen.sh
+ $ ./configure
+ $ make
+ $ ./sample/run.sh [seq|timer]
+ (PyGObject is required.)
+
+Current status:
+ Under development.
+ - Partly support for Card interface
+ - Partly support for Timer interface
+ - Partly support for Sequencer interface
