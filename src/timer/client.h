@@ -53,5 +53,4 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 void alsatimer_client_start(ALSATimerClient *client, GError **exception);
 void alsatimer_client_stop(ALSATimerClient *client, GError **exception);
 void alsatimer_client_resume(ALSATimerClient *client, GError **exception);
-
 #endif

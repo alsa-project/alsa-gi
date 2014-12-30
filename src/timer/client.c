@@ -6,10 +6,20 @@
 #  include <config.h>
 #endif
 
+typedef struct {
+	GSource src;
+	ALSATimerClient *self;
+	gpointer tag;
+} TimerClientSource;
+
 struct _ALSATimerClientPrivate {
 	snd_timer_info_t *info;
 	snd_timer_params_t *params;
 	snd_timer_t *handle;
+
+	TimerClientSource *src;
+	void *buf;
+	unsigned int len;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (ALSATimerClient, alsatimer_client, G_TYPE_OBJECT)
@@ -354,6 +364,115 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 	g_array_append_val(status, val);
 }
 
+static gboolean prepare_src(GSource *gsrc, gint *timeout)
+{
+	*timeout = -1;
+
+	/* This source is not ready, let's poll(2) */
+	return FALSE;
+}
+
+static gboolean check_src(GSource *gsrc)
+{
+	TimerClientSource *src = (TimerClientSource *)gsrc;
+	GIOCondition condition;
+
+	ALSATimerClient *self = src->self;
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	snd_timer_tread_t *ev;
+	ssize_t len;
+
+	condition = g_source_query_unix_fd((GSource *)src, src->tag);
+
+	if (!(condition & G_IO_IN))
+		goto end;
+
+	len = snd_timer_read(priv->handle, priv->buf, priv->len);
+	if (len < 0)
+		goto end;
+
+	while (len > 0) {
+		ev = (snd_timer_tread_t *)priv->buf;
+		g_signal_emit(self,
+			      timer_client_signals[TIMER_CLIENT_SIGNAL_EVENT],
+			      0, ev->event, ev->tstamp.tv_sec,
+			      ev->tstamp.tv_nsec, ev->val);
+		len -= sizeof(snd_timer_tread_t);
+	}
+end:
+	return FALSE;
+}
+
+static gboolean dispatch_src(GSource *gsrc, GSourceFunc callback,
+			     gpointer user_data)
+{
+	/* Just be sure to continue to process this source. */
+	return TRUE;
+}
+
+static void finalize_src(GSource *gsrc)
+{
+	/* Do nothing paticular. */
+	return;
+}
+
+static void listen_client(ALSATimerClient *self, GError **exception)
+{
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	struct pollfd pfds;
+
+	static GSourceFuncs funcs = {
+		.prepare	= prepare_src,
+		.check		= check_src,
+		.dispatch	= dispatch_src,
+		.finalize	= finalize_src,
+	};
+	GSource *src;
+
+	/* Keep a memory so as to store 10 events. */
+	priv->len = sizeof(snd_timer_tread_t) * 10;
+	priv->buf = g_malloc0(priv->len);
+	if (priv->buf == NULL) {
+		priv->len = 0;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENOMEM, "%s", strerror(ENOMEM));
+		return;
+	}
+
+	/* Create a source. */
+	src = g_source_new(&funcs, sizeof(TimerClientSource));
+	if (src == NULL) {
+		g_free(priv->buf);
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENOMEM, "%s", strerror(ENOMEM));
+		return;
+	}
+	g_source_set_name(src, "ALSATimerClient");
+	g_source_set_priority(src, G_PRIORITY_HIGH_IDLE);
+	g_source_set_can_recurse(src, TRUE);
+	((TimerClientSource *)src)->self = self;
+	priv->src = (TimerClientSource *)src;
+
+	/* Attach the source to context. */
+	g_source_attach(src, g_main_context_default());
+	snd_timer_poll_descriptors(priv->handle, &pfds, 1);
+	((TimerClientSource *)src)->tag =
+			g_source_add_unix_fd(src, pfds.fd, G_IO_IN);
+}
+
+static void unlisten_client(ALSATimerClient *self)
+{
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	g_source_destroy((GSource *)priv->src);
+	g_free(priv->src);
+	priv->src = NULL;
+	g_free(priv->buf);
+	priv->buf = NULL;
+	priv->len = 0;
+}
+
 void alsatimer_client_start(ALSATimerClient *self, GError **exception)
 {
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
@@ -366,12 +485,16 @@ void alsatimer_client_start(ALSATimerClient *self, GError **exception)
 		return;
 	}
 
-	/* start listening */
+	listen_client(self, exception);
+	if (*exception != NULL)
+		return;
 
 	err = snd_timer_start(priv->handle);
-	if (err < 0)
+	if (err < 0) {
+		unlisten_client(self);
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));
+	}
 }
 
 void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
@@ -379,16 +502,12 @@ void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 	int err;
 
-	/* TODO: temporary */
-	g_signal_emit(self, timer_client_signals[TIMER_CLIENT_SIGNAL_EVENT], 0,
-		      0, 0, 0, 0);
-
-	/* stop listening */
-
 	err = snd_timer_stop(priv->handle);
 	if (err < 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));
+
+	unlisten_client(self);
 }
 
 void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
@@ -402,7 +521,10 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 			    -err, "%s", snd_strerror(err));
 		return;
 	}
-	/* start listening */
+
+	listen_client(self, exception);
+	if (*exception != NULL)
+		return;
 
 	err = snd_timer_continue(priv->handle);
 	if (err < 0)
