@@ -2,10 +2,7 @@
 #define __ALSASEQ_CLIENT_H__
 
 #include <glib-object.h>
-#include <gio/gio.h>
-#include "client_info.h"
-#include "system_info.h"
-#include "port_info.h"
+#include <alsa/asoundlib.h>
 
 G_BEGIN_DECLS
 
@@ -25,7 +22,7 @@ G_BEGIN_DECLS
 				 ALSASeqClientClass))
 #define ALSASEQ_IS_CLIENT_CLASS(klass)				\
 	(G_TYPE_CHECK_CLASS_TYPE((klass),			\
-				 ALSASEQ_TYPE_Seq))
+				 ALSASEQ_TYPE_CLIENT))
 #define ALSASEQ_CLIENT_GET_CLASS(obj) 				\
 	(G_TYPE_INSTANCE_GET_CLASS((obj),			\
 				   ALSASEQ_TYPE_CLIENT,		\
@@ -40,6 +37,8 @@ struct _ALSASeqClient
 	GObject parent_instance;
 
 	ALSASeqClientPrivate *priv;
+
+	snd_seq_t *handle;	/* Read-only */
 };
 
 struct _ALSASeqClientClass
@@ -49,29 +48,8 @@ struct _ALSASeqClientClass
 
 GType alsaseq_client_get_type(void) G_GNUC_CONST;
 
-ALSASeqClient *alsaseq_client_new(gchar *str, GError **exception);
-//ALSASeqClient *alsaseq_client_new_lconf(gchar *node, gpointer *lconf);
+ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception);
 
-const guchar *alsaseq_client_get_name(ALSASeqClient *self);
-int alsaseq_client_get_id(ALSASeqClient *self);
-
-guint alsaseq_client_get_output_buffer_size(ALSASeqClient *self);
-gboolean alsaseq_client_set_output_buffer_size(ALSASeqClient *self, guint size,
-					    GError **exception);
-guint alsaseq_client_get_input_buffer_size(ALSASeqClient *self);
-gboolean alsaseq_client_set_input_buffer_size(ALSASeqClient *self, guint size,
-					    GError **exception);
-
-ALSASeqClientInfo *alsaseq_client_get_info(ALSASeqClient *client,
-					   GError **exception);
-void alsaseq_client_set_info(ALSASeqClient *client, ALSASeqClientInfo *info,
-			     GError **exception);
-
-ALSASeqSystemInfo *alsaseq_client_get_system_info(ALSASeqClient *client,
-						  GError **exception);
-
-ALSASeqPortInfo *alsaseq_client_create_port(ALSASeqClient *client,
-					    GError **exception);
-void alsaseq_client_delete_port(ALSASeqClient *client, guint id,
-				GError **exception);
+void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
+				    GError **exception);
 #endif

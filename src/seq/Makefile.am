@@ -17,14 +17,14 @@ libalsaseq_la_LIBADD =				\
 	$(GIO_LIBS)
 
 libalsaseq_la_SOURCES =				\
-	client_info.h				\
-	client_info.c				\
-	system_info.h				\
-	system_info.c				\
-	port_info.h				\
-	port_info.c				\
 	client.h				\
-	client.c
+	client.c				\
+	port.h					\
+	port.c
+
+pkginclude_HEADERS = 				\
+	client.h				\
+	port.h
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
