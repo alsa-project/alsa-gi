@@ -4,6 +4,8 @@
 #include <glib-object.h>
 #include <alsa/asoundlib.h>
 
+#include "port.h"
+
 G_BEGIN_DECLS
 
 #define ALSASEQ_TYPE_CLIENT	(alsaseq_client_get_type())
@@ -54,4 +56,8 @@ void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
 				    GError **exception);
 void alsaseq_client_listen(ALSASeqClient *self, GError **exception);
 void alsaseq_client_unlisten(ALSASeqClient *self, GError **exception);
+
+typedef struct _ALSASeqPort	ALSASeqPort;
+ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
+				      GError **exception);
 #endif

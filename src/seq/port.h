@@ -4,6 +4,7 @@
 #include <glib-object.h>
 
 #include "client.h"
+#include "alsaseq_sigs_marshal.h"
 
 G_BEGIN_DECLS
 
@@ -47,6 +48,7 @@ struct _ALSASeqPortClass
 
 GType alsaseq_port_get_type(void) G_GNUC_CONST;
 
+typedef struct _ALSASeqClient	ALSASeqClient;
 ALSASeqPort *alsaseq_port_new(ALSASeqClient *client, const gchar *name,
 			      GError **exception);
 

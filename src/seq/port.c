@@ -33,8 +33,13 @@ enum seq_port_prop {
 	SEQ_PORT_PROP_WRITE_USE,
 	SEQ_PORT_PROP_COUNT,
 };
-
 static GParamSpec *seq_port_props[SEQ_PORT_PROP_COUNT] = { NULL, };
+
+enum seq_port_sig {
+	SEQ_PORT_SIGNAL_EVENT = 0,
+	SEQ_PORT_SIGNAL_COUNT,
+};
+static guint seq_port_sigs[SEQ_PORT_SIGNAL_COUNT] = { 0 };
 
 static void alseseq_port_get_property(GObject *obj, guint id,
 				      GValue *val, GParamSpec *spec)
@@ -268,6 +273,18 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 
 	g_object_class_install_properties(gobject_class, SEQ_PORT_PROP_COUNT,
 					  seq_port_props);
+
+	/* TODO: annotation */
+	seq_port_sigs[SEQ_PORT_SIGNAL_EVENT] =
+		g_signal_new("event",
+		     G_OBJECT_CLASS_TYPE(klass),
+		     G_SIGNAL_RUN_LAST,
+		     0,
+		     NULL, NULL,
+		     alsaseq_sigs_marshal_VOID__INT_UINT_CHAR_UCHAR_UINT_UINT_UCHAR_UCHAR,
+		     G_TYPE_NONE, 8,
+		     G_TYPE_INT, G_TYPE_UINT, G_TYPE_CHAR, G_TYPE_UCHAR,
+		     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UCHAR, G_TYPE_UCHAR);
 }
 
 static void alsaseq_port_init(ALSASeqPort *self)

@@ -41,13 +41,26 @@ print('  input free:    {0}'.format(status[1]))
 ports = [0] * 3
 
 # Test Port object
+def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port):
+    print(' Event occur:')
+			
+    print('  type:      {0}'.format(type))
+    print('  flags:     {0}'.format(flags))
+    print('  tag:       {0}'.format(tag))
+    print('  queue:     {0}'.format(queue))
+    print('  sec:       {0}'.format(sec))
+    print('  nsec:      {0}'.format(nsec))
+    print('  src client:{0}'.format(src_client))
+    print('  src port:  {0}'.format(src_port))
 print('\nTest Port object')
 for i in range(len(ports)):
     try:
-        ports[i] = ALSASeq.Port.new(client, 'client-port:{0}'.format(i+1))
+        ports[i] = client.open_port('client-port:{0}'.format(i + 1))
     except Exception as e:
         print(e)
         sys.exit(1)
+
+    ports[i].connect('event', handle_event)
 
     try:
         ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))

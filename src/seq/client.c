@@ -16,8 +16,10 @@ struct _ALSASeqClientPrivate {
 	snd_seq_client_info_t *info;
 	snd_seq_client_pool_t *pool;
 
-	GList *ports;
 	SeqClientSource *src;
+
+	GList *ports;
+	GMutex lock;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqClient, alsaseq_client, G_TYPE_OBJECT)
@@ -48,16 +50,6 @@ enum alsaseq_client_prop {
 };
 
 static GParamSpec *seq_client_props[SEQ_CLIENT_PROP_COUNT] = { NULL, };
-
-enum alsaseq_client_signal {
-	CLIENT_SIGNAL_NEW = 0,
-	CLIENT_SIGNAL_DESTROY,
-	CLIENT_SIGNAL_INPUT,
-	CLIENT_SIGNAL_OUTPUT,
-	CLIENT_SIGNAL_COUNT,
-};
-
-static guint signals[CLIENT_SIGNAL_COUNT] = { 0 };
 
 static void alseseq_client_get_property(GObject *obj, guint id,
 					GValue *val, GParamSpec *spec)
@@ -197,15 +189,6 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 	gobject_class->dispose = alsaseq_client_dispose;
 	gobject_class->finalize = alsaseq_client_finalize;
 
-	signals[CLIENT_SIGNAL_NEW] =
-		g_signal_new("new",
-		     G_OBJECT_CLASS_TYPE(klass),
-		     G_SIGNAL_RUN_LAST,
-		     0,
-		     NULL, NULL,
-		     g_cclosure_marshal_VOID__VOID,
-		     G_TYPE_NONE, 0, NULL);
-
 	seq_client_props[SEQ_CLIENT_PROP_ID] =
 		g_param_spec_int("id", "id",
 				 "The id for this client",
@@ -328,6 +311,7 @@ ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception)
 	priv->info = info;
 	self->handle = handle;
 	priv->ports = NULL;
+	g_mutex_init(&priv->lock);
 
 	return self;
 error:
@@ -370,6 +354,32 @@ void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
 	g_array_append_val(status, val);
 }
 
+/**
+ * alsaseq_client_open_port:
+ * @self: A #ALSASeqClient
+ * @name: The name of new port
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSASeqPort
+ */
+ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
+				      GError **exception)
+{
+	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqPort *port;
+
+	port = alsaseq_port_new(self, name, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* TODO: when should we remove this entry? */
+	g_mutex_lock(&priv->lock);
+	priv->ports = g_list_prepend(priv->ports, port);
+	g_mutex_unlock(&priv->lock);
+
+	return port;
+}
+
 static gboolean prepare_src(GSource *gsrc, gint *timeout)
 {
 	SeqClientSource *src = (SeqClientSource *)gsrc;
@@ -395,6 +405,8 @@ static gboolean check_src(GSource *gsrc)
 
 	snd_seq_event_t *ev;
 	GList *entry;
+	ALSASeqPort *port;
+	GValue val = G_VALUE_INIT;
 
 	condition = g_source_query_unix_fd((GSource *)src, src->tag);
 
@@ -405,16 +417,28 @@ static gboolean check_src(GSource *gsrc)
 	if (!(condition & G_IO_IN))
 		goto end;
 
+	g_value_init(&val, G_TYPE_INT);
+	g_mutex_lock(&priv->lock);
 	do {
 		if (snd_seq_event_input(self->handle, &ev) < 0)
 			break;
 
-	//	for (entry = priv->ports; entry != NULL; entry = entry->next) {
-			printf("client: %d\n", ev->dest.client);
-			printf("port: %d\n", ev->dest.port);
-			printf("type: %d\n", ev->type);
-	//	}
+		for (entry = priv->ports; entry != NULL; entry = entry->next) {
+			port = (ALSASeqPort *)entry->data;
+
+			g_object_get_property(G_OBJECT(port), "id", &val);
+			if (ev->dest.port != g_value_get_int(&val))
+				continue;
+
+			/* TODO: data */
+			g_signal_emit_by_name(G_OBJECT(port), "event",
+				ev->type, ev->flags, ev->tag, ev->queue,
+				ev->time.time.tv_sec, ev->time.time.tv_nsec,
+				ev->source.client, ev->source.port,
+				NULL);
+		}
 	} while (snd_seq_event_input_pending(self->handle, 0) > 0);
+	g_mutex_unlock(&priv->lock);
 end:
 	return FALSE;
 }

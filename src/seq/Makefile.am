@@ -17,14 +17,29 @@ libalsaseq_la_LIBADD =				\
 	$(GIO_LIBS)
 
 libalsaseq_la_SOURCES =				\
+	alsaseq_sigs_marshal.h			\
+	alsaseq_sigs_marshal.c			\
 	client.h				\
 	client.c				\
 	port.h					\
 	port.c
 
 pkginclude_HEADERS = 				\
+	alsaseq_sigs_marshal.h			\
 	client.h				\
 	port.h
+
+alsaseq_sigs_marshal.list:
+	find | grep \.c$$ | xargs cat | 				\
+	sed -n -e 's/.*alsaseq_sigs_marshal_\([A-Z]*__[A-Z_]*\).*/\1/p' |\
+	sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@
+
+alsaseq_sigs_marshal.h: alsaseq_sigs_marshal.list
+	glib-genmarshal --header --prefix=alsaseq_sigs_marshal $< > $@
+
+alsaseq_sigs_marshal.c: alsaseq_sigs_marshal.list alsaseq_sigs_marshal.h
+	echo '#include "alsaseq_sigs_marshal.h"' > $@
+	glib-genmarshal --body --prefix=alsaseq_sigs_marshal $< >> $@
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
