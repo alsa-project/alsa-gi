@@ -1,15 +1,15 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
-if ENABLE_CARD
-CARD_DIR=card
-else
-CARD_DIR=
-endif
-
 if ENABLE_SEQUENCER
 SEQUENCER_DIR=seq
 else
 SEQUENCER_DIR=
+endif
+
+if ENABLE_TIMER
+TIMER_DIR=timer
+else
+TIMER_DIR=
 endif
 
 if ENABLE_RAWMIDI
@@ -42,28 +42,22 @@ else
 COMPRESS_DIR=
 endif
 
-if ENABLE_TIMER
-TIMER_DIR=timer
-else
-TIMER_DIR=
-endif
-
 SUBDIRS=			\
-	$(CARD_DIR)		\
+	card			\
 	$(SEQUENCER_DIR)	\
+	$(TIMER_DIR)		\
 	$(RAWMIDI_DIR)		\
 	$(HWDEP_DIR)		\
 	$(CONTROL_DIR)		\
 	$(PCM_DIR)		\
-	$(COMPRESS_DIR)		\
-	$(TIMER_DIR)
+	$(COMPRESS_DIR)
 
 DIST_SUBDIRS=			\
 	card			\
-	seq			\
-	rawmidi			\
-	hwdep			\
-	control			\
-	pcm			\
-	compress		\
-	timer
+	$(SEQUENCER_DIR)	\
+	$(TIMER_DIR)		\
+	$(RAWMIDI_DIR)		\
+	$(HWDEP_DIR)		\
+	$(CONTROL_DIR)		\
+	$(PCM_DIR)		\
+	$(COMPRESS_DIR)

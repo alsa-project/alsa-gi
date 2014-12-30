@@ -57,22 +57,6 @@ AC_SUBST(ASOUNDLIB_LIBS)
 
 
 #
-# ALSA card interface support
-#
-AC_ARG_ENABLE([card],
-	      AS_HELP_STRING([--disable-card],
-			     [Disable ALSA card interface support]),
-			     [case "${enableval}" in
-				yes) card=true  ;;
-				no)  card=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-card) ;;
-			     esac],
-			     [card=true])
-AM_CONDITIONAL(ENABLE_CARD, test "x$card" = "xtrue")
-
-
-
-#
 # ALSA Sequencer interface support
 #
 AC_ARG_ENABLE([sequencer],
@@ -85,6 +69,21 @@ AC_ARG_ENABLE([sequencer],
 			     esac],
 			     [sequencer=true])
 AM_CONDITIONAL(ENABLE_SEQUENCER, test "x$sequencer" = "xtrue")
+
+
+#
+# ALSA timer interface support
+#
+AC_ARG_ENABLE([timer],
+	      AS_HELP_STRING([--disable-timer],
+			     [Disable ALSA timer interface support]),
+			     [case "${enableval}" in
+				yes) timer=true  ;;
+				no)  timer=false ;;
+				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-timer) ;;
+			     esac],
+			     [timer=true])
+AM_CONDITIONAL(ENABLE_TIMER, test "x$timer" = "xtrue")
 
 
 #
@@ -133,21 +132,6 @@ AM_CONDITIONAL(ENABLE_CONTROL, test "x$control" = "xtrue")
 
 
 #
-# ALSA timer interface support
-#
-AC_ARG_ENABLE([timer],
-	      AS_HELP_STRING([--disable-timer],
-			     [Disable ALSA timer interface support]),
-			     [case "${enableval}" in
-				yes) timer=true  ;;
-				no)  timer=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-timer) ;;
-			     esac],
-			     [timer=false])
-AM_CONDITIONAL(ENABLE_TIMER, test "x$timer" = "xtrue")
-
-
-#
 # ALSA PCM interface support
 #
 AC_ARG_ENABLE([pcm],
@@ -182,6 +166,7 @@ AC_CONFIG_FILES([
   src/Makefile
   src/card/Makefile
   src/seq/Makefile
+  src/timer/Makefile
   doc/Makefile
   doc/reference/Makefile
   doc/reference/version.xml
@@ -204,7 +189,7 @@ echo "
 	GObject Introspection:				${found_introspection}
 
 	ALSA library support:				${HAVE_ASOUNDLIB}
-		card interface support:			${card}
+		card interface support:			true
 		sequencer interface support:		${sequencer}
 		rawmidi interface support:		${rawmidi}
 		hwdep interface support:		${hwdep}
