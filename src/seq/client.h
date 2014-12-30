@@ -52,4 +52,6 @@ ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception);
 
 void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
 				    GError **exception);
+void alsaseq_client_listen(ALSASeqClient *self, GError **exception);
+void alsaseq_client_unlisten(ALSASeqClient *self, GError **exception);
 #endif

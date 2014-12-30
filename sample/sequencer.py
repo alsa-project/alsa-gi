@@ -55,6 +55,12 @@ for i in range(len(ports)):
         print(e)
         sys.exit(1)
 
+    try:
+        ports[i].set_property('capabilities', 0xff)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
     print(' Name: {0}'.format(ports[i].get_property('name')))
     print('  id:            {0}'.format(ports[i].get_property('id')))
     print('  type:          0 -> {0}'.format(ports[i].get_property('type')))
@@ -71,3 +77,17 @@ for i in range(len(ports)):
     print('  write use:     {0}'.format(ports[i].get_property('write-use')))
 
     print(' Ports in client:{0}'.format(client.get_property('ports')))
+
+try:
+    client.listen()
+except Exception as e:
+    print(e)
+    sys.exit(1)
+
+# Event loop
+from gi.repository import GLib
+
+loop = GLib.MainLoop()
+loop.run()
+
+client.unlisten()

@@ -1,3 +1,4 @@
+#include <poll.h>
 #include <alsa/asoundlib.h>
 #include "client.h"
 
@@ -5,10 +6,18 @@
 #  include <config.h>
 #endif
 
+typedef struct {
+	GSource src;
+	ALSASeqClient *self;
+	gpointer tag;
+} SeqClientSource;
+
 struct _ALSASeqClientPrivate {
-	snd_seq_t *handle;
 	snd_seq_client_info_t *info;
 	snd_seq_client_pool_t *pool;
+
+	GList *ports;
+	SeqClientSource *src;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqClient, alsaseq_client, G_TYPE_OBJECT)
@@ -318,6 +327,7 @@ ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception)
 	priv->pool = pool;
 	priv->info = info;
 	self->handle = handle;
+	priv->ports = NULL;
 
 	return self;
 error:
@@ -360,4 +370,117 @@ void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
 	g_array_append_val(status, val);
 }
 
-/* TODO: port object list and deliver events to the object. */
+static gboolean prepare_src(GSource *gsrc, gint *timeout)
+{
+	SeqClientSource *src = (SeqClientSource *)gsrc;
+	ALSASeqClient *self = src->self;
+
+	/* Set 2msec for poll(2) timeout if need to output. */
+	if (snd_seq_event_output_pending(self->handle) > 0)
+		*timeout = 2;
+	else
+		*timeout = -1;
+
+	/* This source is not ready, let's poll(2) */
+	return FALSE;
+}
+
+static gboolean check_src(GSource *gsrc)
+{
+	SeqClientSource *src = (SeqClientSource *)gsrc;
+	GIOCondition condition;
+
+	ALSASeqClient *self = src->self;
+	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+
+	snd_seq_event_t *ev;
+	GList *entry;
+
+	condition = g_source_query_unix_fd((GSource *)src, src->tag);
+
+	if ((condition & G_IO_OUT) &&
+	    (snd_seq_event_output_pending(self->handle) > 0))
+		snd_seq_drain_output(self->handle);
+
+	if (!(condition & G_IO_IN))
+		goto end;
+
+	do {
+		if (snd_seq_event_input(self->handle, &ev) < 0)
+			break;
+
+	//	for (entry = priv->ports; entry != NULL; entry = entry->next) {
+			printf("client: %d\n", ev->dest.client);
+			printf("port: %d\n", ev->dest.port);
+			printf("type: %d\n", ev->type);
+	//	}
+	} while (snd_seq_event_input_pending(self->handle, 0) > 0);
+end:
+	return FALSE;
+}
+
+static gboolean dispatch_src(GSource *gsrc, GSourceFunc callback,
+			     gpointer user_data)
+{
+	SeqClientSource *src = (SeqClientSource *)gsrc;
+	ALSASeqClient *self = src->self;
+	GIOCondition condition;
+
+	/* Decide next event to wait for. */
+	condition = G_IO_IN;
+	if (snd_seq_event_output_pending(self->handle) > 0)
+		condition |= G_IO_OUT;
+	g_source_modify_unix_fd(gsrc, src->tag, condition);
+
+	/* Just be sure to continue to process this source. */
+	return TRUE;
+}
+
+static void finalize_src(GSource *gsrc)
+{
+	/* Do nothing paticular. */
+	return;
+}
+
+void alsaseq_client_listen(ALSASeqClient *self, GError **exception)
+{
+	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	struct pollfd pfds;
+
+	static GSourceFuncs funcs = {
+		.prepare	= prepare_src,
+		.check		= check_src,
+		.dispatch	= dispatch_src,
+		.finalize	= finalize_src,
+	};
+	GSource *src;
+	GMainContext *ctx;
+
+	/* Create a source. */
+	src = g_source_new(&funcs, sizeof(SeqClientSource));
+	if (src == NULL) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENOMEM, "%s", strerror(ENOMEM));
+		return;
+	}
+	g_source_set_name(src, "ALSASeqClient");
+	g_source_set_priority(src, G_PRIORITY_HIGH_IDLE);
+	g_source_set_can_recurse(src, TRUE);
+	((SeqClientSource *)src)->self = self;
+	priv->src = (SeqClientSource *)src;
+
+	/* Attach the source to context. */
+	g_source_attach(src, g_main_context_default());
+	snd_seq_poll_descriptors(self->handle, &pfds, 1, POLLIN | POLLOUT);
+	((SeqClientSource *)src)->tag =
+			g_source_add_unix_fd(src, pfds.fd, G_IO_IN);
+}
+
+void alsaseq_client_unlisten(ALSASeqClient *self, GError **exception)
+{
+	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+
+	g_source_destroy((GSource *)priv->src);
+	g_free(priv->src);
+	priv->src = NULL;
+}
