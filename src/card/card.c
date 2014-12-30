@@ -11,32 +11,32 @@
 struct _ALSACardSndUnitPrivate {
 	gchar *unit;
 };
-G_DEFINE_TYPE_WITH_PRIVATE (ALSACardSndUnit, alsacard_snd_unit, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE(ALSACardSndUnit, alsacard_snd_unit, G_TYPE_OBJECT)
 
 static void alsacard_snd_unit_dispose(GObject *gobject)
 {
-	G_OBJECT_CLASS (alsacard_snd_unit_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS(alsacard_snd_unit_parent_class)->dispose(gobject);
 }
 
 /*
 gobject_new() -> g_clear_object()
 */
 
-static void alsacard_snd_unit_finalize (GObject *gobject)
+static void alsacard_snd_unit_finalize(GObject *gobject)
 {
 	ALSACardSndUnit *self = ALSACARD_SND_UNIT(gobject);
 
 	if (self->priv->unit)
 		free(self->priv->unit);
 
-	G_OBJECT_CLASS(alsacard_snd_unit_parent_class)->finalize (gobject);
+	G_OBJECT_CLASS(alsacard_snd_unit_parent_class)->finalize(gobject);
 
 	printf("destroy\n");
 }
 
 static void alsacard_snd_unit_class_init(ALSACardSndUnitClass *klass)
 {
-	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
 	gobject_class->dispose = alsacard_snd_unit_dispose;
 	gobject_class->finalize = alsacard_snd_unit_finalize;

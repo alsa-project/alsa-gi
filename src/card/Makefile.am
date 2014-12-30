@@ -17,8 +17,13 @@ libalsacard_la_LIBADD =				\
 	$(GIO_LIBS)
 
 libalsacard_la_SOURCES =			\
+	context.c				\
 	card.h					\
 	card.c
+
+pkginclude_HEADERS =				\
+        context.h				\
+        card.h
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
