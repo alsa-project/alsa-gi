@@ -10,7 +10,7 @@ struct _ALSATimerQueryPrivate {
 	snd_timer_query_t *handle;
 	snd_timer_ginfo_t *info;
 };
-G_DEFINE_TYPE_WITH_PRIVATE (ALSATimerQuery, alsatimer_query, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE(ALSATimerQuery, alsatimer_query, G_TYPE_OBJECT)
 #define TIMER_QUERY_GET_PRIVATE(obj)					\
         (G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
 				     ALSA_TIMER_TYPE_QUERY,		\

@@ -29,7 +29,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqClient, alsaseq_client, G_TYPE_OBJECT)
 
 /* TODO: Event filter. */
 
-enum alsaseq_client_prop {
+enum seq_client_prop {
 	/* Client information */
 	SEQ_CLIENT_PROP_ID = 1,
 	SEQ_CLIENT_PROP_TYPE,
@@ -51,8 +51,8 @@ enum alsaseq_client_prop {
 
 static GParamSpec *seq_client_props[SEQ_CLIENT_PROP_COUNT] = { NULL, };
 
-static void alseseq_client_get_property(GObject *obj, guint id,
-					GValue *val, GParamSpec *spec)
+static void seq_client_get_property(GObject *obj, guint id,
+				    GValue *val, GParamSpec *spec)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
@@ -116,8 +116,8 @@ static void alseseq_client_get_property(GObject *obj, guint id,
 	}
 }
 
-static void alseseq_client_set_property(GObject *obj, guint id,
-					const GValue *val, GParamSpec *spec)
+static void seq_client_set_property(GObject *obj, guint id,
+				    const GValue *val, GParamSpec *spec)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
@@ -163,12 +163,12 @@ static void alseseq_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void alsaseq_client_dispose(GObject *gobject)
+static void seq_client_dispose(GObject *gobject)
 {
 	G_OBJECT_CLASS(alsaseq_client_parent_class)->dispose(gobject);
 }
 
-static void alsaseq_client_finalize(GObject *gobject)
+static void seq_client_finalize(GObject *gobject)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(gobject);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
@@ -184,10 +184,10 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->get_property = alseseq_client_get_property;
-	gobject_class->set_property = alseseq_client_set_property;
-	gobject_class->dispose = alsaseq_client_dispose;
-	gobject_class->finalize = alsaseq_client_finalize;
+	gobject_class->get_property = seq_client_get_property;
+	gobject_class->set_property = seq_client_set_property;
+	gobject_class->dispose = seq_client_dispose;
+	gobject_class->finalize = seq_client_finalize;
 
 	seq_client_props[SEQ_CLIENT_PROP_ID] =
 		g_param_spec_int("id", "id",

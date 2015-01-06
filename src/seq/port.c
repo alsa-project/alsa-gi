@@ -41,8 +41,8 @@ enum seq_port_sig {
 };
 static guint seq_port_sigs[SEQ_PORT_SIGNAL_COUNT] = { 0 };
 
-static void alseseq_port_get_property(GObject *obj, guint id,
-				      GValue *val, GParamSpec *spec)
+static void seq_port_get_property(GObject *obj, guint id,
+				  GValue *val, GParamSpec *spec)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
 	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
@@ -107,9 +107,8 @@ static void alseseq_port_get_property(GObject *obj, guint id,
 
 }
 
-static void alseseq_port_set_property(GObject *obj, guint id,
-					     const GValue *val,
-					     GParamSpec *spec)
+static void seq_port_set_property(GObject *obj, guint id,
+				  const GValue *val, GParamSpec *spec)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
 	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
@@ -168,12 +167,12 @@ static void alseseq_port_set_property(GObject *obj, guint id,
 			      priv->info);
 }
 
-static void alsaseq_port_dispose(GObject *gobject)
+static void seq_port_dispose(GObject *gobject)
 {
 	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(gobject);
 }
 
-static void alsaseq_port_finalize(GObject *gobject)
+static void seq_port_finalize(GObject *gobject)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(gobject);
 	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
@@ -191,10 +190,10 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->get_property = alseseq_port_get_property;
-	gobject_class->set_property = alseseq_port_set_property;
-	gobject_class->dispose = alsaseq_port_dispose;
-	gobject_class->finalize = alsaseq_port_finalize;
+	gobject_class->get_property = seq_port_get_property;
+	gobject_class->set_property = seq_port_set_property;
+	gobject_class->dispose = seq_port_dispose;
+	gobject_class->finalize = seq_port_finalize;
 
 	seq_port_props[SEQ_PORT_PROP_ID] =
 		g_param_spec_int("id", "id",

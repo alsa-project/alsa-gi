@@ -22,7 +22,7 @@ struct _ALSATimerClientPrivate {
 	unsigned int len;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE (ALSATimerClient, alsatimer_client, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE(ALSATimerClient, alsatimer_client, G_TYPE_OBJECT)
 #define TIMER_CLIENT_GET_PRIVATE(obj)					\
         (G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
 				     ALSATIMER_TYPE_CLIENT,		\
@@ -53,8 +53,8 @@ enum timer_client_signal {
 
 static guint timer_client_signals[TIMER_CLIENT_SIGNAL_COUNT] = { 0 };
 
-static void alsatimer_client_get_property(GObject *obj, guint id,
-					GValue *val, GParamSpec *spec)
+static void timer_client_get_property(GObject *obj, guint id,
+				      GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(obj);
@@ -106,8 +106,8 @@ static void alsatimer_client_get_property(GObject *obj, guint id,
 	}
 }
 
-static void alsatimer_client_set_property(GObject *obj, guint id,
-					const GValue *val, GParamSpec *spec)
+static void timer_client_set_property(GObject *obj, guint id,
+				      const GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(obj);
@@ -143,12 +143,12 @@ static void alsatimer_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void alsatimer_client_dispose(GObject *gobject)
+static void timer_client_dispose(GObject *gobject)
 {
 	G_OBJECT_CLASS(alsatimer_client_parent_class)->dispose(gobject);
 }
 
-static void alsatimer_client_finalize(GObject *gobject)
+static void timer_client_finalize(GObject *gobject)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(gobject);
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
@@ -163,10 +163,10 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-	gobject_class->get_property = alsatimer_client_get_property;
-	gobject_class->set_property = alsatimer_client_set_property;
-	gobject_class->dispose = alsatimer_client_dispose;
-	gobject_class->finalize = alsatimer_client_finalize;
+	gobject_class->get_property = timer_client_get_property;
+	gobject_class->set_property = timer_client_set_property;
+	gobject_class->dispose = timer_client_dispose;
+	gobject_class->finalize = timer_client_finalize;
 
 	timer_client_props[TIMER_CLIENT_PROP_ID] = 
 		g_param_spec_string("id", "id",
@@ -244,8 +244,7 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
 					  timer_client_props);
 }
 
-static void
-alsatimer_client_init(ALSATimerClient *self)
+static void alsatimer_client_init(ALSATimerClient *self)
 {
 	self->priv = alsatimer_client_get_instance_private(self);
 }
