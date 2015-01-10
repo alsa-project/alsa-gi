@@ -8,12 +8,10 @@ from gi.repository import ALSASeq
 # Test Client object
 print('Test Client object')
 try:
-    client = ALSASeq.Client.new('default')
+    client = ALSASeq.Client.new('default', 'sequencer-client')
 except Exception as e:
     print(e)
     sys.exit(1)
-
-client.set_property('name', 'sequencer-client')
 
 print(' Name:           {0}'.format(client.get_property('name')))
 print('  id:            {0}'.format(client.get_property('id')))
@@ -25,18 +23,16 @@ print('  input buffer:  {0}'.format(client.get_property('input-buffer')))
 print('  output pool:   {0}'.format(client.get_property('output-pool')))
 print('  input pool:    {0}'.format(client.get_property('input-pool')))
 print('  output room:   {0}'.format(client.get_property('output-room')))
+print('  output free:   {0}'.format(client.get_property('output-free')))
+print('  input free:    {0}'.format(client.get_property('input-free')))
 print('  broadcast:     {0}'.format(client.get_property('broadcast-filter')))
 print('  error bounce:  {0}'.format(client.get_property('error-bounce')))
 
 try:
-    status = client.get_pool_status()
+    client.update()
 except Exception as e:
     print(e)
-    sys.exit(1)
-
-print(' Pool status:')
-print('  output free:   {0}'.format(status[0]))
-print('  input free:    {0}'.format(status[1]))
+    sys.exit()
 
 ports = [0] * 3
 

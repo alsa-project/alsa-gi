@@ -50,10 +50,10 @@ struct _ALSASeqClientClass
 
 GType alsaseq_client_get_type(void) G_GNUC_CONST;
 
-ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception);
+ALSASeqClient *alsaseq_client_new(gchar *seq, const gchar *name,
+				  GError **exception);
+void alsaseq_client_update(ALSASeqClient *self, GError **exception);
 
-void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
-				    GError **exception);
 void alsaseq_client_listen(ALSASeqClient *self, GError **exception);
 void alsaseq_client_unlisten(ALSASeqClient *self, GError **exception);
 

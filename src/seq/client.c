@@ -46,6 +46,8 @@ enum seq_client_prop {
 	SEQ_CLIENT_PROP_OUTPUT_POOL,
 	SEQ_CLIENT_PROP_INPUT_POOL,
 	SEQ_CLIENT_PROP_OUTPUT_ROOM,
+	SEQ_CLIENT_PROP_OUTPUT_FREE,
+	SEQ_CLIENT_PROP_INPUT_FREE,
 	SEQ_CLIENT_PROP_COUNT,
 };
 
@@ -58,6 +60,7 @@ static void seq_client_get_property(GObject *obj, guint id,
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
 
 	switch (id) {
+	/* client information */
 	case SEQ_CLIENT_PROP_ID:
 		g_value_set_int(val,
 				snd_seq_client_info_get_client(priv->info));
@@ -71,14 +74,10 @@ static void seq_client_get_property(GObject *obj, guint id,
 				   snd_seq_client_info_get_name(priv->info));
 		break;
 	case SEQ_CLIENT_PROP_PORTS:
-		/* Lazily, no error handling... */
-		snd_seq_get_client_info(self->handle, priv->info);
 		g_value_set_int(val,
 				snd_seq_client_info_get_num_ports(priv->info));
 		break;
 	case SEQ_CLIENT_PROP_LOST:
-		/* Lazily, no error handling... */
-		snd_seq_get_client_info(self->handle, priv->info);
 		g_value_set_int(val,
 				snd_seq_client_info_get_event_lost(priv->info));
 		break;
@@ -98,6 +97,7 @@ static void seq_client_get_property(GObject *obj, guint id,
 		g_value_set_int(val,
 				snd_seq_get_input_buffer_size(self->handle));
 		break;
+	/* pool information */
 	case SEQ_CLIENT_PROP_OUTPUT_POOL:
 		g_value_set_int(val,
 			snd_seq_client_pool_get_output_pool(priv->pool));
@@ -109,6 +109,14 @@ static void seq_client_get_property(GObject *obj, guint id,
 	case SEQ_CLIENT_PROP_OUTPUT_ROOM:
 		g_value_set_int(val,
 			snd_seq_client_pool_get_output_room(priv->pool));
+		break;
+	case SEQ_CLIENT_PROP_OUTPUT_FREE:
+		g_value_set_int(val,
+			snd_seq_client_pool_get_output_free(priv->pool));
+		break;
+	case SEQ_CLIENT_PROP_INPUT_FREE:
+		g_value_set_int(val,
+			snd_seq_client_pool_get_input_free(priv->pool));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -126,8 +134,6 @@ static void seq_client_set_property(GObject *obj, guint id,
 	case SEQ_CLIENT_PROP_NAME:
 		snd_seq_client_info_set_name(priv->info,
 					     g_value_get_string(val));
-		/* Lazily, no error handling... */
-		snd_seq_set_client_info(self->handle, priv->info);
 		break;
 	case SEQ_CLIENT_PROP_BROADCAST_FILTER:
 		snd_seq_client_info_set_broadcast_filter(priv->info,
@@ -145,18 +151,25 @@ static void seq_client_set_property(GObject *obj, guint id,
 		snd_seq_set_input_buffer_size(self->handle,
 					      g_value_get_int(val));
 		break;
+	/* pool information */
+	case SEQ_CLIENT_PROP_OUTPUT_POOL:
+		snd_seq_client_pool_set_output_pool(priv->pool,
+						    g_value_get_int(val));
+		break;
 	case SEQ_CLIENT_PROP_INPUT_POOL:
 		snd_seq_client_pool_set_input_pool(priv->pool,
 						   g_value_get_int(val));
-		/* Lazily, no error handling... */
-		snd_seq_set_client_pool(self->handle, priv->pool);
 		break;
 	case SEQ_CLIENT_PROP_OUTPUT_ROOM:
 		snd_seq_client_pool_set_output_room(priv->pool,
 						    g_value_get_int(val));
-		/* Lazily, no error handling... */
-		snd_seq_set_client_pool(self->handle, priv->pool);
 		break;
+	case SEQ_CLIENT_PROP_ID:
+	case SEQ_CLIENT_PROP_TYPE:
+	case SEQ_CLIENT_PROP_PORTS:
+	case SEQ_CLIENT_PROP_LOST:
+	case SEQ_CLIENT_PROP_OUTPUT_FREE:
+	case SEQ_CLIENT_PROP_INPUT_FREE:
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
 		break;
@@ -258,6 +271,18 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 				 0, INT_MAX,
 				 0,
 				 G_PARAM_READWRITE);
+	seq_client_props[SEQ_CLIENT_PROP_OUTPUT_FREE] =
+		g_param_spec_int("output-free", "output-free",
+				 "The free size of pool for output",
+				 0, INT_MAX,
+				 0,
+				 G_PARAM_READWRITE);
+	seq_client_props[SEQ_CLIENT_PROP_INPUT_FREE] =
+		g_param_spec_int("input-free", "input-free",
+				 "The free size of pool for input",
+				 0, INT_MAX,
+				 0,
+				 G_PARAM_READWRITE);
 
 	g_object_class_install_properties(gobject_class, SEQ_CLIENT_PROP_COUNT,
 					  seq_client_props);
@@ -268,7 +293,8 @@ static void alsaseq_client_init(ALSASeqClient *self)
 	self->priv = alsaseq_client_get_instance_private(self);
 }
 
-ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception)
+ALSASeqClient *alsaseq_client_new(gchar *seq, const gchar *name,
+				  GError **exception)
 {
 	ALSASeqClient *self;
 	ALSASeqClientPrivate *priv;
@@ -288,6 +314,10 @@ ALSASeqClient *alsaseq_client_new(gchar *seq, GError **exception)
 	if (err < 0)
 		goto error;
 	err = snd_seq_get_client_info(handle, info);
+	if (err < 0)
+		goto error;
+	snd_seq_client_info_set_name(info, name);
+	err = snd_seq_set_client_info(handle, info);
 	if (err < 0)
 		goto error;
 
@@ -327,31 +357,29 @@ error:
 }
 
 /**
- * alsaseq_client_get_pool_status
- * @self: A #ALSASeqClient
- * @status: (element-type int) (array) (out caller-allocates):
- *		A #GArray for status
+ * alsaseq_client_update
+ * @self: A ##ALSASeqClient
  * @exception: A #GError
+ *
+ * After calling this, all properties are updated. When changing properties,
+ * this should be called.
  */
-void alsaseq_client_get_pool_status(ALSASeqClient *self, GArray *status,
-				    GError **exception)
+void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 {
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
-	int val;
 	int err;
 
-	err = snd_seq_get_client_pool(self->handle, priv->pool);
+	err = snd_seq_set_client_info(self->handle, priv->info);
 	if (err < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));
 		return;
 	}
 
-	g_array_set_size(status, 2);
-	val = snd_seq_client_pool_get_output_free(priv->pool);
-	g_array_append_val(status, val);
-	val = snd_seq_client_pool_get_input_free(priv->pool);
-	g_array_append_val(status, val);
+	err = snd_seq_set_client_pool(self->handle, priv->pool);
+	if (err < 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
 }
 
 /**
