@@ -54,6 +54,15 @@ ALSASeqClient *alsaseq_client_new(gchar *seq, const gchar *name,
 				  GError **exception);
 void alsaseq_client_update(ALSASeqClient *self, GError **exception);
 
+guint alsaseq_client_get_output_buffer_size(ALSASeqClient *self,
+					    GError **exception);
+guint alsaseq_client_get_input_buffer_size(ALSASeqClient *self,
+					   GError **exception);
+void alsaseq_client_set_output_buffer_size(ALSASeqClient *self, guint size,
+					   GError **exception);
+void alsaseq_client_set_input_buffer_size(ALSASeqClient *self, guint size,
+					  GError **exception);
+
 void alsaseq_client_listen(ALSASeqClient *self, GError **exception);
 void alsaseq_client_unlisten(ALSASeqClient *self, GError **exception);
 

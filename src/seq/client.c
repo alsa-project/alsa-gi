@@ -39,9 +39,6 @@ enum seq_client_prop {
 	/* Event filter parameters */
 	SEQ_CLIENT_PROP_BROADCAST_FILTER,
 	SEQ_CLIENT_PROP_ERROR_BOUNCE,
-	/* Buffer parameters */
-	SEQ_CLIENT_PROP_OUTPUT_BUFFER,
-	SEQ_CLIENT_PROP_INPUT_BUFFER,
 	/* Client pool information */
 	SEQ_CLIENT_PROP_OUTPUT_POOL,
 	SEQ_CLIENT_PROP_INPUT_POOL,
@@ -89,14 +86,6 @@ static void seq_client_get_property(GObject *obj, guint id,
 		g_value_set_boolean(val,
 			snd_seq_client_info_get_error_bounce(priv->info));
 		break;
-	case SEQ_CLIENT_PROP_OUTPUT_BUFFER:
-		g_value_set_int(val,
-				snd_seq_get_output_buffer_size(self->handle));
-		break;
-	case SEQ_CLIENT_PROP_INPUT_BUFFER:
-		g_value_set_int(val,
-				snd_seq_get_input_buffer_size(self->handle));
-		break;
 	/* pool information */
 	case SEQ_CLIENT_PROP_OUTPUT_POOL:
 		g_value_set_int(val,
@@ -143,14 +132,6 @@ static void seq_client_set_property(GObject *obj, guint id,
 		snd_seq_client_info_set_error_bounce(priv->info,
 						g_value_get_boolean(val));
 		break;
-	case SEQ_CLIENT_PROP_OUTPUT_BUFFER:
-		snd_seq_set_output_buffer_size(self->handle,
-					       g_value_get_int(val));
-		break;
-	case SEQ_CLIENT_PROP_INPUT_BUFFER:
-		snd_seq_set_input_buffer_size(self->handle,
-					      g_value_get_int(val));
-		break;
 	/* pool information */
 	case SEQ_CLIENT_PROP_OUTPUT_POOL:
 		snd_seq_client_pool_set_output_pool(priv->pool,
@@ -186,8 +167,9 @@ static void seq_client_finalize(GObject *gobject)
 	ALSASeqClient *self = ALSASEQ_CLIENT(gobject);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
 
-	snd_seq_client_pool_free(priv->pool);
 	snd_seq_client_info_free(priv->info);
+
+	snd_seq_client_pool_free(priv->pool);
 	snd_seq_close(self->handle);
 
 	G_OBJECT_CLASS(alsaseq_client_parent_class)->finalize(gobject);
@@ -241,18 +223,6 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 				     "Receive error bounce event or not",
 				     FALSE,
 				     G_PARAM_READABLE);
-	seq_client_props[SEQ_CLIENT_PROP_OUTPUT_BUFFER] =
-		g_param_spec_int("output-buffer", "output-buffer",
-				 "The size of buffer for output",
-				 0, INT_MAX,
-				 0,
-				 G_PARAM_READWRITE);
-	seq_client_props[SEQ_CLIENT_PROP_INPUT_BUFFER] =
-		g_param_spec_int("input-buffer", "output-buffer",
-				 "The size of buffer for input",
-				 0, INT_MAX,
-				 0,
-				 G_PARAM_READABLE);
 	seq_client_props[SEQ_CLIENT_PROP_OUTPUT_POOL] =
 		g_param_spec_int("output-pool", "output-pool",
 				 "The size of pool for output",
@@ -371,12 +341,48 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 
 	err = snd_seq_set_client_info(self->handle, priv->info);
 	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
+		g_set_error(exception,
+			    g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));
 		return;
 	}
 
 	err = snd_seq_set_client_pool(self->handle, priv->pool);
+	if (err < 0)
+		g_set_error(exception,
+			    g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+}
+
+guint alsaseq_client_get_output_buffer_size(ALSASeqClient *self,
+					    GError **exception)
+{
+	return snd_seq_get_output_buffer_size(self->handle);
+}
+
+guint alsaseq_client_get_input_buffer_size(ALSASeqClient *self,
+					   GError **exception)
+{
+	return snd_seq_get_input_buffer_size(self->handle);
+}
+
+void alsaseq_client_set_output_buffer_size(ALSASeqClient *self, guint size,
+					   GError **exception)
+{
+	int err;
+
+	err = snd_seq_set_output_buffer_size(self->handle, size);
+	if (err < 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
+}
+
+void alsaseq_client_set_input_buffer_size(ALSASeqClient *self, guint size,
+					  GError **exception)
+{
+	int err;
+
+	err = snd_seq_set_input_buffer_size(self->handle, size);
 	if (err < 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    -err, "%s", snd_strerror(err));

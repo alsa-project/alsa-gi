@@ -18,8 +18,6 @@ print('  id:            {0}'.format(client.get_property('id')))
 print('  type:          {0}'.format(client.get_property('type')))
 print('  ports:         {0}'.format(client.get_property('ports')))
 print('  lost:          {0}'.format(client.get_property('lost')))
-print('  output buffer: {0}'.format(client.get_property('output-buffer')))
-print('  input buffer:  {0}'.format(client.get_property('input-buffer')))
 print('  output pool:   {0}'.format(client.get_property('output-pool')))
 print('  input pool:    {0}'.format(client.get_property('input-pool')))
 print('  output room:   {0}'.format(client.get_property('output-room')))
@@ -27,6 +25,19 @@ print('  output free:   {0}'.format(client.get_property('output-free')))
 print('  input free:    {0}'.format(client.get_property('input-free')))
 print('  broadcast:     {0}'.format(client.get_property('broadcast-filter')))
 print('  error bounce:  {0}'.format(client.get_property('error-bounce')))
+
+
+print(' Buffer:')
+try:
+	obuf = client.get_output_buffer_size()
+	ibuf = client.get_input_buffer_size()
+	client.set_output_buffer_size(20000)
+	client.set_input_buffer_size(20000)
+except Exception as e:
+	print(e)
+	sys.exit()
+print('  size for out:	{0} -> {1}'.format(obuf, client.get_output_buffer_size()))
+print('  size for in:	{0} -> {1}'.format(ibuf, client.get_input_buffer_size()))
 
 try:
     client.update()
