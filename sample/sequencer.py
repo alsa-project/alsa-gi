@@ -63,9 +63,13 @@ for i in range(len(ports)):
     except Exception as e:
         print(e)
         sys.exit(1)
-
     try:
         ports[i].set_property('capabilities', 0xff)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+    try:
+        ports[i].update()
     except Exception as e:
         print(e)
         sys.exit(1)

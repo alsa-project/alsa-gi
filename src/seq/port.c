@@ -160,11 +160,6 @@ static void seq_port_set_property(GObject *obj, guint id,
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
 		return;
 	}
-
-	/* Lazily, no error handling... */
-	snd_seq_set_port_info(priv->client->handle,
-			      snd_seq_port_info_get_port(priv->info),
-			      priv->info);
 }
 
 static void seq_port_dispose(GObject *gobject)
@@ -332,8 +327,23 @@ error:
 	return NULL;
 }
 
-void alsaseq_port_get_address(ALSASeqClient *self, GArray *addr,
-			      GError **exception)
+/**
+ * alsaseq_port_update
+ * @self: A ##ALSASeqPort
+ * @exception: A #GError
+ *
+ * After calling this, all properties are updated. When changing properties,
+ * this should be called.
+ */
+void alsaseq_port_update(ALSASeqPort *self, GError **exception)
 {
+	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
+	int err;
 
+	err = snd_seq_set_port_info(priv->client->handle,
+				    snd_seq_port_info_get_port(priv->info),
+				    priv->info);
+	if (err < 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    -err, "%s", snd_strerror(err));
 }

@@ -52,4 +52,5 @@ typedef struct _ALSASeqClient	ALSASeqClient;
 ALSASeqPort *alsaseq_port_new(ALSASeqClient *client, const gchar *name,
 			      GError **exception);
 
+void alsaseq_port_update(ALSASeqPort *self, GError **exception);
 #endif
