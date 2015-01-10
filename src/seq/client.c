@@ -352,7 +352,7 @@ error:
 	if (handle != NULL)
 		snd_seq_close(handle);
 	g_set_error(exception, g_quark_from_static_string(__func__),
-		    ENOMEM, "%s", snd_strerror(-ENOMEM));
+		    -err, "%s", snd_strerror(err));
 	return NULL;
 }
 
