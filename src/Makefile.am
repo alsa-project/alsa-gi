@@ -46,9 +46,9 @@ SUBDIRS=			\
 	card			\
 	$(SEQUENCER_DIR)	\
 	$(TIMER_DIR)		\
+	$(CONTROL_DIR)		\
 	$(RAWMIDI_DIR)		\
 	$(HWDEP_DIR)		\
-	$(CONTROL_DIR)		\
 	$(PCM_DIR)		\
 	$(COMPRESS_DIR)
 
@@ -56,8 +56,8 @@ DIST_SUBDIRS=			\
 	card			\
 	$(SEQUENCER_DIR)	\
 	$(TIMER_DIR)		\
+	$(CONTROL_DIR)		\
 	$(RAWMIDI_DIR)		\
 	$(HWDEP_DIR)		\
-	$(CONTROL_DIR)		\
 	$(PCM_DIR)		\
 	$(COMPRESS_DIR)

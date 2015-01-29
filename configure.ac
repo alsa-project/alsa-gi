@@ -87,6 +87,21 @@ AM_CONDITIONAL(ENABLE_TIMER, test "x$timer" = "xtrue")
 
 
 #
+# ALSA control interface support
+#
+AC_ARG_ENABLE([control],
+	      AS_HELP_STRING([--disable-control],
+			     [Disable ALSA control interface support]),
+			     [case "${enableval}" in
+				yes) control=true  ;;
+				no)  control=false ;;
+				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-control) ;;
+			     esac],
+			     [control=true])
+AM_CONDITIONAL(ENABLE_CONTROL, test "x$control" = "xtrue")
+
+
+#
 # ALSA rawmidi interface support
 #
 AC_ARG_ENABLE([rawmidi],
@@ -114,21 +129,6 @@ AC_ARG_ENABLE([hwdep],
 			     esac],
 			     [hwdep=false])
 AM_CONDITIONAL(ENABLE_HWDEP, test "x$hwdep" = "xtrue")
-
-
-#
-# ALSA control interface support
-#
-AC_ARG_ENABLE([control],
-	      AS_HELP_STRING([--disable-control],
-			     [Disable ALSA control interface support]),
-			     [case "${enableval}" in
-				yes) control=true  ;;
-				no)  control=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-control) ;;
-			     esac],
-			     [control=false])
-AM_CONDITIONAL(ENABLE_CONTROL, test "x$control" = "xtrue")
 
 
 #
@@ -167,6 +167,7 @@ AC_CONFIG_FILES([
   src/card/Makefile
   src/seq/Makefile
   src/timer/Makefile
+  src/control/Makefile
   doc/Makefile
   doc/reference/Makefile
   doc/reference/version.xml
