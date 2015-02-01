@@ -8,6 +8,8 @@ from gi.repository import ALSACtl
 # Gtk+3 gir
 from gi.repository import Gtk
 
+import time
+
 elemsets = []
 
 # Create client
@@ -22,8 +24,9 @@ except Exception as e:
     sys.exit()
 
 # Add my element set
+name = 'my-elemset-{0}'.format(time.strftime('%S'))
 try:
-    elemset = ctl.add_elemset(2, "my-elemset", 10, 0, 10, 1)
+    elemset = ctl.add_elemset(2, name, 10, 0, 10, 1)
     elemset.unlock()
 except Exception as e:
     print(e)
