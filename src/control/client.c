@@ -1,4 +1,14 @@
+#include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/ioctl.h>
+#include <stddef.h>
+
+#include <sound/asound.h>
 
 #include "client.h"
 
@@ -9,12 +19,14 @@ typedef struct {
 } CtlClientSource;
 
 struct _ALSACtlClientPrivate {
-	snd_ctl_event_t *event;
+	struct snd_ctl_event event;
 
 	GList *elemsets;
 	GMutex lock;
 
 	CtlClientSource *src;
+
+	int fd;
 };
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlClient, alsactl_client, G_TYPE_OBJECT)
 #define CTL_CLIENT_GET_PRIVATE(obj)					\
@@ -27,7 +39,6 @@ enum ctl_client_prop_type {
 	CTL_CLIENT_PROP_COUNT,
 };
 static GParamSpec *ctl_client_props[CTL_CLIENT_PROP_COUNT] = {NULL, };
-
 
 /* This object has one signal. */
 enum ctl_client_sig_type {
@@ -44,10 +55,7 @@ static void ctl_client_get_property(GObject *obj, guint id,
 
 	switch (id) {
 	case CTL_CLIENT_PROP_NAME:
-		g_value_set_string(val, snd_ctl_name(self->handle));
-		break;
-	case CTL_CLIENT_PROP_TYPE:
-		g_value_set_int(val, snd_ctl_type(self->handle));
+		g_value_set_string(val, "something");
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -64,10 +72,11 @@ static void ctl_client_set_property(GObject *obj, guint id,
 static void ctl_client_dispose(GObject *obj)
 {
 	ALSACtlClient *self = ALSACTL_CLIENT(obj);
+	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
 
 	alsactl_client_unlisten(self);
-
-	snd_ctl_close(self->handle);
+	close(priv->fd);
+	priv->fd = 0;
 
 	G_OBJECT_CLASS(alsactl_client_parent_class)->dispose(obj);
 }
@@ -123,29 +132,64 @@ static void alsactl_client_init(ALSACtlClient *self)
 
 /**
  * alsactl_client_open:
- * @node: the name for ALSA control node
+ * @path: a path for the special file of ALSA control device
  * @exception: A #GError
  *
  * Returns: (transfer full): A #ALSACtlClient
  */
-ALSACtlClient *alsactl_client_open(const gchar *node, GError **exception)
+void alsactl_client_open(ALSACtlClient *self, const gchar *path,
+			 GError **exception)
 {
-	ALSACtlClient *self;
 	ALSACtlClientPrivate *priv;
-	snd_ctl_t *handle;
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	priv->fd = open(path, O_RDONLY);
+	if (priv->fd < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		priv->fd = 0;
+	}
+}
+
+static int allocate_element_ids(ALSACtlClientPrivate *priv,
+				struct snd_ctl_elem_list *list)
+{
+	unsigned int i, count;
 	int err;
 
-	err = snd_ctl_open(&handle, node, 0);
-	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return;
+	/* Help for deallocation. */
+	memset(list, 0, sizeof(struct snd_ctl_elem_list));
+
+	/* Get the number of elements in this control device. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0)
+		return -errno;
+
+	/* No elements found. */
+	if (list->count == 0)
+		return 0;
+	count = list->count;
+
+	/* Allocate spaces for these elements. */
+	list->pids = calloc(count, sizeof(struct snd_ctl_elem_id));
+	if (list->pids == NULL)
+		return ENOMEM;
+	list->space = count;
+
+	/* Get the IDs of elements in this control device. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+		free(list->pids);
+		return -errno;
 	}
 
-	self = g_object_new(ALSACTL_TYPE_CLIENT, NULL);
-	self->handle = handle;
+	return 0;
+}
 
-	return self;
+static inline void deallocate_element_ids(struct snd_ctl_elem_list *list)
+{
+	if (list->pids != NULL)
+		free(list->pids);
 }
 
 /**
@@ -160,8 +204,7 @@ void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
 				     GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	snd_ctl_elem_list_t *l = NULL;
-	guint id;
+	struct snd_ctl_elem_list elem_list = {0};
 	unsigned int i, count;
 	int err;
 
@@ -170,46 +213,23 @@ void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
 
 	/* Check the size of element in given list. */
 	if (g_array_get_element_size(list) != sizeof(guint)) {
-		err = -EINVAL;
+		err = EINVAL;
 		goto end;
 	}
 
-	/* Use stack. */
-	snd_ctl_elem_list_alloca(&l);
-
-	/* Get the number of elements in this control device. */
-	err = snd_ctl_elem_list(self->handle, l);
-	if (err < 0)
+	err = allocate_element_ids(priv, &elem_list);
+	if (err > 0)
 		goto end;
-
-	count = snd_ctl_elem_list_get_count(l);
-	if (count == 0)
-		goto end;
-
-	/* Use heap. */
-	err = snd_ctl_elem_list_alloc_space(l, count);
-	if (err < 0)
-		goto end;
-
-	/* Get the IDs of elements in this control device. */
-	err = snd_ctl_elem_list(self->handle, l);
-	if (err < 0)
-		goto end;
+	count = elem_list.count;
 
 	/* Return current 'numid' as ID. */
-	for (i = 0; i < count; i++) {
-		id = snd_ctl_elem_list_get_numid(l, i);
-		g_array_append_val(list, id);
-	}
+	for (i = 0; i < count; i++)
+		g_array_append_val(list, elem_list.pids[i].numid);
 end:
-	if (err < 0) {
+	deallocate_element_ids(&elem_list);
+	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		count = 0;
-	}
-	/* The value of 'used' means how many allocated entries are used. */
-	if (l != NULL & snd_ctl_elem_list_get_used(l))
-		snd_ctl_elem_list_free_space(l);
+			    err, "%s", strerror(err));
 }
 
 static void insert_to_link_list(ALSACtlClient *self, ALSACtlElemset *elem)
@@ -225,53 +245,6 @@ static void insert_to_link_list(ALSACtlClient *self, ALSACtlElemset *elem)
 	g_mutex_unlock(&priv->lock);
 }
 
-static int fill_id_by_numid(ALSACtlClient *self, snd_ctl_elem_id_t *id,
-			    unsigned int numid)
-{
-	snd_ctl_elem_list_t *list;
-	unsigned int i, count;
-	int err;
-
-	/* Use stack. */
-	snd_ctl_elem_list_alloca(&list);
-
-	/* Get the number of elements in this control device. */
-	err = snd_ctl_elem_list(self->handle, list);
-	if (err < 0)
-		goto end;
-
-	count = snd_ctl_elem_list_get_count(list);
-	if (count == 0)
-		goto end;
-
-	/* Use heap. */
-	err = snd_ctl_elem_list_alloc_space(list, count);
-	if (err < 0)
-		goto end;
-
-	/* Get the IDs of elements in this control device. */
-	err = snd_ctl_elem_list(self->handle, list);
-	if (err < 0)
-		goto end;
-
-	/* Seek an element with the ID. */
-	for (i = 0; i < count; i++) {
-		if (snd_ctl_elem_list_get_numid(list, i) == numid)
-			break;
-	}
-	if (i == count) {
-		err = -ENODEV;
-		goto end;
-	}
-
-	/* Set this ID. */
-	snd_ctl_elem_list_get_id(list, i, id);
-end:
-	if (snd_ctl_elem_list_get_used(list) > 0)
-		snd_ctl_elem_list_free_space(list);
-	return err;
-}
-
 /**
  * alsactl_client_get_elemset:
  * @self: A #ALSACtlClient
@@ -285,44 +258,56 @@ ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 {
 	ALSACtlClientPrivate *priv;
 	ALSACtlElemset *elemset = NULL;
-	snd_ctl_elem_id_t *id;
+	struct snd_ctl_elem_list elem_list;
+	struct snd_ctl_elem_id *id;
+	unsigned int i, count;
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	/* Fill ID by given id. */
-	snd_ctl_elem_id_alloca(&id);
-	err = fill_id_by_numid(self, id, numid);
-	if (err < 0)
+	err = allocate_element_ids(priv, &elem_list);
+	if (err > 0)
 		goto end;
+	count = elem_list.count;
+
+	/* Seek a element indicated by the numerical ID. */
+	for (i = 0; i < count; i++) {
+		if (elem_list.pids[i].numid == numid)
+			break;
+	}
+	if (i == count) {
+		err = ENODEV;
+		goto end;
+	}
 
 	/* Keep the new instance for this element. */
+	id = &elem_list.pids[i];
 	elemset = g_object_new(ALSACTL_TYPE_ELEMSET,
-			       "id", snd_ctl_elem_id_get_numid(id),
-			       "iface", snd_ctl_elem_id_get_interface(id),
-			       "device", snd_ctl_elem_id_get_device(id),
-			       "subdevice", snd_ctl_elem_id_get_subdevice(id),
-			       "name", snd_ctl_elem_id_get_name(id),
+			       "fd", priv->fd,
+			       "id", id->numid,
+			       "iface", id->iface,
+			       "device", id->device,
+			       "subdevice", id->subdevice,
+			       "name", id->name,
 			       NULL);
 	elemset->client = g_object_ref(self);
 
 	/* Update the element information. */
 	alsactl_elemset_update(elemset, exception);
-	if (*exception != NULL)
+	if (*exception != NULL) {
+		g_clear_object(&elemset);
+		elemset = NULL;
 		goto end;
+	}
 
 	/* Insert this element to the list in this client. */
 	insert_to_link_list(self, elemset);
 end:
-	if (err < 0)
+	deallocate_element_ids(&elem_list);
+	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-	if (*exception != NULL) {
-		if (elemset != NULL)
-			g_clear_object(&elemset);
-		elemset == NULL;
-	}
+			    err, "%s", strerror(err));
 	return elemset;
 }
 
@@ -340,60 +325,79 @@ end:
  */
 ALSACtlElemset *alsactl_client_add_elemset(ALSACtlClient *self, gint iface,
 					   const gchar *name, guint count,
-					   guint64 min, guint64 max, guint step,
-					   GError **exception)
+					   guint64 min, guint64 max,
+					   guint step, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	ALSACtlElemset *elemset = NULL;
-	snd_ctl_elem_id_t *id;
+	struct snd_ctl_elem_info info = {0};
+	struct snd_ctl_elem_id *id;
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	/* Check arguments. */
-	if (iface < 0 || iface >= SND_CTL_ELEM_IFACE_LAST ||
-	    name == NULL || strlen(name) >= 43 ||
-	    count == 0 || count >= 32 || min >= max || (max - min) % step) {
-		err = -EINVAL;
+	/* Check interface type. */
+	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
+		err = EINVAL;
 		goto end;
 	}
+	info.id.iface = iface;
 
-	/* The name is required. */
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_id_set_name(id, name);
-	snd_ctl_elem_id_set_interface(id, iface);
-	err = snd_ctl_elem_add_integer(self->handle, id, count, min, max, step);
-	if (err < 0)
+	/* Check eleset name. */
+	if (name == NULL || strlen(name) >= sizeof(info.id.name)) {
+		err = EINVAL;
 		goto end;
+	}
+	strcpy(info.id.name, name);
+
+	info.access = SNDRV_CTL_ELEM_ACCESS_READWRITE;
+	info.count = count;
+
+	/* Type-specific information. */
+	info.type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	if (min >= max || (max - min) % step) {
+		err = EINVAL;
+		goto end;
+	}
+	info.value.integer.min = min;
+	info.value.integer.max = max;
+	info.value.integer.step = step;
+
+	/* Add this element set. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
+		err = -errno;
+		goto end;
+	}
+	id = &info.id;
 
 	/* Keep the new instance for this element. */
 	elemset = g_object_new(ALSACTL_TYPE_ELEMSET,
-			       "id", snd_ctl_elem_id_get_numid(id),
-			       "iface", snd_ctl_elem_id_get_interface(id),
-			       "device", snd_ctl_elem_id_get_device(id),
-			       "subdevice", snd_ctl_elem_id_get_subdevice(id),
-			       "name", snd_ctl_elem_id_get_name(id),
+			       "fd", priv->fd,
+			       "id", id->numid,
+			       "iface", id->iface,
+			       "device", id->device,
+			       "subdevice", id->subdevice,
+			       "name", id->name,
 			       NULL);
 	elemset->client = g_object_ref(self);
 
 	/* Update the element information. */
 	alsactl_elemset_update(elemset, exception);
 	if (*exception != NULL) {
+		g_clear_object(&elemset);
+		elemset = NULL;
 		goto end;
 	}
 
 	/* Insert this element to the list in this client. */
 	insert_to_link_list(self, elemset);
+
+	err = 0;
 end:
-	if (err < 0)
+	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-	if (*exception != NULL) {
-		if (elemset != NULL)
-			g_clear_object(&elemset);
-		elemset = NULL;
-	}
+			    err, "%s", strerror(err));
 	return elemset;
 }
 
@@ -427,57 +431,28 @@ static gboolean prepare_src(GSource *src, gint *timeout)
 	return FALSE;
 }
 
-static gboolean check_src(GSource *gsrc)
+static void handle_elem_event(ALSACtlClient *client, unsigned int event,
+			      struct snd_ctl_elem_id *id)
 {
-	CtlClientSource *src = (CtlClientSource *)gsrc;
-	GIOCondition condition;
-
-	ALSACtlClient *client = src->client;
-	ALSACtlClientPrivate *priv;
-
+	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(client);
 	GList *entry;
 	ALSACtlElemset *elemset;
-	unsigned int mask;
 
 	GValue val = G_VALUE_INIT;
-	unsigned int numid_ev, numid_elem;
-	unsigned int index;
+	unsigned int numid;
 
 	int err;
 
-	condition = g_source_query_unix_fd(gsrc, src->tag);
-	if (!(condition & G_IO_IN))
-		return;
-
-	if ((client == NULL) || !ALSACTL_IS_CLIENT(client))
-		return;
-	priv = CTL_CLIENT_GET_PRIVATE(client);
-
-	snd_ctl_event_clear(priv->event);
-	err = snd_ctl_read(client->handle, priv->event);
-	if (err < 0)
-		goto end;
-
-	/* NOTE: currently ALSA middleware supports 'elem' only. */
-	if (snd_ctl_event_get_type(priv->event) != SND_CTL_EVENT_ELEM)
-		goto end;
-
-	/* Retrieve event mask */
-	mask = snd_ctl_event_elem_get_mask(priv->event);
-	numid_ev = snd_ctl_event_elem_get_numid(priv->event);
-	index = snd_ctl_event_elem_get_index(priv->event);
-
-	/* A new element is added. . */
-	if (mask & SND_CTL_EVENT_MASK_ADD) {
-		/* NOTE: The numid is always zero, maybe bug. */
+	/* A new element is added. */
+	if (event & SNDRV_CTL_EVENT_MASK_ADD) {
 		g_signal_emit(G_OBJECT(client),
 			      ctl_client_sigs[CTL_CLIENT_SIG_ADDED], 0,
-			      numid_ev);
+			      id->numid);
 	}
 
 	/* No other events except for the add. */
-	if (!(mask & ~SND_CTL_EVENT_MASK_ADD))
-		goto end;
+	if (!(event & ~SNDRV_CTL_EVENT_MASK_ADD))
+		return;
 
 	/* Deliver the events to elements. */
 	g_mutex_lock(&priv->lock);
@@ -488,14 +463,14 @@ static gboolean check_src(GSource *gsrc)
 			continue;
 
 		g_object_get_property(G_OBJECT(elemset), "id", &val);
-		numid_elem = g_value_get_uint(&val);
+		numid = g_value_get_uint(&val);
 
 		/* Here, I check the value of numid only. */
-		if (numid_elem != numid_ev)
+		if (numid != id->numid)
 			continue;
 
 		/* The mask of remove event is strange, not mask. */
-		if (mask == SND_CTL_EVENT_MASK_REMOVE) {
+		if (event == SNDRV_CTL_EVENT_MASK_REMOVE) {
 			priv->elemsets = g_list_delete_link(priv->elemsets,
 							    entry);
 			g_signal_emit_by_name(G_OBJECT(elemset), "removed",
@@ -503,17 +478,51 @@ static gboolean check_src(GSource *gsrc)
 			continue;
 		}
 
-		if (mask & SND_CTL_EVENT_MASK_VALUE)
+		if (event & SNDRV_CTL_EVENT_MASK_VALUE)
 			g_signal_emit_by_name(G_OBJECT(elemset), "changed",
 					      NULL);
-		if (mask & SND_CTL_EVENT_MASK_INFO)
+		if (event & SNDRV_CTL_EVENT_MASK_INFO)
 			g_signal_emit_by_name(G_OBJECT(elemset), "updated",
 					      NULL);
-		if (mask & SND_CTL_EVENT_MASK_TLV)
+		if (event & SNDRV_CTL_EVENT_MASK_TLV)
 			g_signal_emit_by_name(G_OBJECT(elemset), "tlv", NULL);
 	}
 	g_mutex_unlock(&priv->lock);
-end:
+}
+
+static gboolean check_src(GSource *gsrc)
+{
+	CtlClientSource *src = (CtlClientSource *)gsrc;
+	GIOCondition condition;
+	ALSACtlClient *client = src->client;
+	ALSACtlClientPrivate *priv;
+	int len;
+
+	condition = g_source_query_unix_fd(gsrc, src->tag);
+	if (!(condition & G_IO_IN))
+		return;
+
+	if (!ALSACTL_IS_CLIENT(client))
+		return;
+	priv = CTL_CLIENT_GET_PRIVATE(client);
+
+	/* To save stack usage. */
+	len = read(priv->fd, &priv->event, sizeof(struct snd_ctl_event));
+	if ((len < 0) || (len != sizeof(struct snd_ctl_event))) {
+		/* Read error but ignore it. */
+		return;
+	}
+
+	/* NOTE: currently ALSA middleware supports 'elem' event only. */
+	switch (priv->event.type) {
+	case SNDRV_CTL_EVENT_ELEM:
+		handle_elem_event(client, priv->event.data.elem.mask,
+				  &priv->event.data.elem.id);
+		break;
+	default:
+		break;
+	}
+
 	/* Don't go to dispatch, then continue to process this source. */
 	return FALSE;
 }
@@ -534,31 +543,17 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 		.finalize	= NULL,
 	};
 	ALSACtlClientPrivate *priv;
-	struct pollfd pfds;
 	GSource *src;
-	int err;
+	int subscribe;
+	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	/* This library doesn't support a handle with multi-descriptor. */
-	if (snd_ctl_poll_descriptors_count(self->handle) != 1) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
-		return;
-	}
-
-	if (snd_ctl_poll_descriptors(self->handle, &pfds, 1) != 1) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
-		return;
-	}
-
 	src = g_source_new(&funcs, sizeof(CtlClientSource));
 	if (src == NULL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
-		return;
+		err = ENOMEM;
+		goto end;
 	}
 
 	g_source_set_name(src, "ALSACtlClient");
@@ -568,26 +563,21 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	((CtlClientSource *)src)->client = self;
 	priv->src = (CtlClientSource *)src;
 
-	err = snd_ctl_event_malloc(&priv->event);
-	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		alsactl_client_unlisten(self);
-		return;
-	}
-	
 	/* Attach the source to context. */
 	g_source_attach(src, g_main_context_default());
 	((CtlClientSource *)src)->tag =
-			g_source_add_unix_fd(src, pfds.fd, G_IO_IN);
+				g_source_add_unix_fd(src, priv->fd, G_IO_IN);
 
 	/* Be sure to subscribe events. */
-	err = snd_ctl_subscribe_events(self->handle, 1);
-	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+	subscribe = 1;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe) < 0) {
+		err = -errno;
 		alsactl_client_unlisten(self);
 	}
+end:
+	if (err > 0)
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    err, "%s", strerror(err));
 }
 
 void alsactl_client_unlisten(ALSACtlClient *self)
@@ -597,14 +587,10 @@ void alsactl_client_unlisten(ALSACtlClient *self)
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	if (priv->src != NULL) {
-		g_source_destroy((GSource *)priv->src);
-		g_free(priv->src);
-		priv->src = NULL;
-	}
+	if (priv->src == NULL)
+		return;
 
-	if (priv->event != NULL) {
-		snd_ctl_event_free(priv->event);
-		priv->event = NULL;
-	}
+	g_source_destroy((GSource *)priv->src);
+	g_free(priv->src);
+	priv->src = NULL;
 }

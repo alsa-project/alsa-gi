@@ -12,7 +12,6 @@ lib_LTLIBRARIES =				\
 	libalsactl.la
 
 libalsactl_la_LIBADD =				\
-	-lasound				\
 	$(GLIB_LIBS)				\
 	$(GIO_LIBS)
 

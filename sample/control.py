@@ -13,12 +13,20 @@ import time
 elemsets = []
 
 # Create client
-def handle_added_event(ctl, id):
+client = ALSACtl.Client()
+def handle_added_event(client, id):
     print('  An element {0} is added.'.format(id))
+print('open client')
 try:
-    ctl = ALSACtl.Client.open("hw:0")
-    ctl.listen()
-    ctl.connect('added', handle_added_event)
+    client.open('/dev/snd/controlC0')
+except Exception as e:
+    print(e)
+    sys.exit()
+client.connect('added', handle_added_event)
+
+print('start listening')
+try:
+    client.listen()
 except Exception as e:
     print(e)
     sys.exit()
@@ -26,7 +34,7 @@ except Exception as e:
 # Add my element set
 name = 'my-elemset-{0}'.format(time.strftime('%S'))
 try:
-    elemset = ctl.add_elemset(2, name, 10, 0, 10, 1)
+    elemset = client.add_elemset(2, name, 10, 0, 10, 1)
     elemset.unlock()
 except Exception as e:
     print(e)
@@ -35,19 +43,18 @@ elemsets.append(elemset)
 
 # Get element set list
 try:
-    elemset_list = ctl.get_elemset_list()
+    elemset_list = client.get_elemset_list()
 except Excepion as e:
     print(e)
     sys.exit()
-print(elemset_list)
 
 # Print element set
 properties = ('id', 'type', 'iface', 'device', 'subdevice', 'count',
               'readable', 'writable', 'volatile', 'inactive', 'locked',
-              'is-mine', 'is-user')
+              'is-owned', 'is-user')
 for i in elemset_list:
     try:
-        elemset = ctl.get_elemset(i);
+        elemset = client.get_elemset(i);
     except Exception as e:
         print(e)
         sys.exit()

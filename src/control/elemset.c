@@ -1,9 +1,19 @@
-#include <alsa/asoundlib.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/ioctl.h>
+#include <stddef.h>
+
+#include <sound/asound.h>
 #include "elemset.h"
 
 struct _ALSACtlElemsetPrivate {
-	snd_ctl_t *handle;
-	snd_ctl_elem_info_t *info;
+	int fd;
+	struct snd_ctl_elem_info info;
 };
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemset, alsactl_elemset, G_TYPE_OBJECT)
 #define CTL_ELEMSET_GET_PRIVATE(obj)					\
@@ -11,22 +21,22 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemset, alsactl_elemset, G_TYPE_OBJECT)
 				ALSACTL_TYPE_ELEMSET, ALSACtlElemsetPrivate))
 
 enum ctl_elemset_prop_type {
-	/* Identifications */
-	CTL_ELEMSET_PROP_NAME = 1,
+	CTL_ELEMSET_PROP_FD = 1,
 	CTL_ELEMSET_PROP_TYPE,
+	CTL_ELEMSET_PROP_ELEMENTS,
+	/* Identifications */
+	CTL_ELEMSET_PROP_NAME,
 	CTL_ELEMSET_PROP_ID,
 	CTL_ELEMSET_PROP_IFACE,
 	CTL_ELEMSET_PROP_DEVICE,
 	CTL_ELEMSET_PROP_SUBDEVICE,
-	/* Parameters */
-	CTL_ELEMSET_PROP_ELEMENTS,
 	/* Permissions */
 	CTL_ELEMSET_PROP_READABLE,
 	CTL_ELEMSET_PROP_WRITABLE,
 	CTL_ELEMSET_PROP_VOLATILE,
 	CTL_ELEMSET_PROP_INACTIVE,
 	CTL_ELEMSET_PROP_LOCKED,
-	CTL_ELEMSET_PROP_IS_MINE,
+	CTL_ELEMSET_PROP_IS_OWNED,
 	CTL_ELEMSET_PROP_IS_USER,
 	CTL_ELEMSET_PROP_COUNT,
 };
@@ -48,58 +58,54 @@ static void ctl_elemset_get_property(GObject *obj, guint id,
 	ALSACtlElemsetPrivate *priv = CTL_ELEMSET_GET_PRIVATE(self);
 
 	switch (id) {
-	case CTL_ELEMSET_PROP_NAME:
-		g_value_set_string(val, snd_ctl_elem_info_get_name(priv->info));
-		break;
 	case CTL_ELEMSET_PROP_TYPE:
-		g_value_set_int(val, snd_ctl_elem_info_get_type(priv->info));
-		break;
-	case CTL_ELEMSET_PROP_ID:
-		g_value_set_uint(val, snd_ctl_elem_info_get_numid(priv->info));
-		break;
-	case CTL_ELEMSET_PROP_IFACE:
-		g_value_set_int(val,
-				snd_ctl_elem_info_get_interface(priv->info));
-		break;
-	case CTL_ELEMSET_PROP_DEVICE:
-		g_value_set_uint(val,
-				 snd_ctl_elem_info_get_device(priv->info));
-		break;
-	case CTL_ELEMSET_PROP_SUBDEVICE:
-		g_value_set_uint(val,
-				 snd_ctl_elem_info_get_subdevice(priv->info));
+		g_value_set_int(val, priv->info.type);
 		break;
 	case CTL_ELEMSET_PROP_ELEMENTS:
-		g_value_set_uint(val,
-				 snd_ctl_elem_info_get_count(priv->info));
+		g_value_set_uint(val, priv->info.count);
+		break;
+	case CTL_ELEMSET_PROP_NAME:
+		g_value_set_string(val, priv->info.id.name);
+		break;
+	case CTL_ELEMSET_PROP_ID:
+		g_value_set_uint(val, priv->info.id.numid);
+		break;
+	case CTL_ELEMSET_PROP_IFACE:
+		g_value_set_int(val, priv->info.id.iface);
+		break;
+	case CTL_ELEMSET_PROP_DEVICE:
+		g_value_set_uint(val, priv->info.id.device);
+		break;
+	case CTL_ELEMSET_PROP_SUBDEVICE:
+		g_value_set_uint(val, priv->info.id.subdevice);
 		break;
 	case CTL_ELEMSET_PROP_READABLE:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_readable(priv->info));
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_READ));
 		break;
 	case CTL_ELEMSET_PROP_WRITABLE:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_writable(priv->info));
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_WRITE));
 		break;
 	case CTL_ELEMSET_PROP_VOLATILE:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_volatile(priv->info));
+		    !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_VOLATILE));
 		break;
 	case CTL_ELEMSET_PROP_INACTIVE:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_inactive(priv->info));
+		    !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_INACTIVE));
 		break;
 	case CTL_ELEMSET_PROP_LOCKED:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_locked(priv->info));
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_LOCK));
 		break;
-	case CTL_ELEMSET_PROP_IS_MINE:
+	case CTL_ELEMSET_PROP_IS_OWNED:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_owner(priv->info));
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER));
 		break;
 	case CTL_ELEMSET_PROP_IS_USER:
 		g_value_set_boolean(val,
-				    snd_ctl_elem_info_is_user(priv->info));
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_USER));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -115,23 +121,24 @@ static void ctl_elemset_set_property(GObject *obj, guint id,
 
 	switch (id) {
 	/* These should be set by constructor. */
+	case CTL_ELEMSET_PROP_FD:
+		priv->fd = g_value_get_int(val);
+		break;
 	case CTL_ELEMSET_PROP_NAME:
-		snd_ctl_elem_info_set_name(priv->info,
-					   g_value_get_string(val));
+		strncpy(priv->info.id.name, g_value_get_string(val),
+						sizeof(priv->info.id.name));
 		break;
 	case CTL_ELEMSET_PROP_ID:
-		snd_ctl_elem_info_set_numid(priv->info, g_value_get_uint(val));
+		priv->info.id.numid = g_value_get_uint(val);
 		break;
 	case CTL_ELEMSET_PROP_IFACE:
-		snd_ctl_elem_info_set_interface(priv->info,
-						g_value_get_int(val));
+		priv->info.id.iface = g_value_get_int(val);
 		break;
 	case CTL_ELEMSET_PROP_DEVICE:
-		snd_ctl_elem_info_set_device(priv->info, g_value_get_uint(val));
+		priv->info.id.device = g_value_get_uint(val);
 		break;
 	case CTL_ELEMSET_PROP_SUBDEVICE:
-		snd_ctl_elem_info_set_subdevice(priv->info,
-						g_value_get_uint(val));
+		priv->info.id.subdevice = g_value_get_uint(val);
 		break;
 	/* The index is not required. */
 	default:
@@ -144,19 +151,18 @@ static void ctl_elemset_dispose(GObject *obj)
 {
 	ALSACtlElemset *self = ALSACTL_ELEMSET(obj);
 	ALSACtlElemsetPrivate *priv = CTL_ELEMSET_GET_PRIVATE(self);
-	snd_ctl_elem_id_t *id;
-
-	/* Ignore any errors. */
 	GError *exception = NULL;
 
-	alsactl_elemset_update(self, &exception);
+	/* Leave ownership to release this elemset. */
+	alsactl_elemset_unlock(self, &exception);
+	if (exception != NULL)
+		g_error_free(exception);
 
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_info_get_id(priv->info, id);
-	snd_ctl_elem_remove(self->client->handle, id);
+	/* Remove this element as long as no processes owns. */
+	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
+		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
 
-	if (snd_ctl_elem_info_is_owner(priv->info))
-		alsactl_client_remove_elem(self->client, self, &exception);
+	alsactl_client_remove_elem(self->client, self, NULL);
 
 	G_OBJECT_CLASS(alsactl_elemset_parent_class)->dispose(obj);
 }
@@ -175,17 +181,29 @@ static void alsactl_elemset_class_init(ALSACtlElemsetClass *klass)
 	gobject_class->dispose = ctl_elemset_dispose;
 	gobject_class->finalize = ctl_elemset_finalize;
 
-	ctl_elemset_props[CTL_ELEMSET_PROP_NAME] =
-		g_param_spec_string("name", "name",
-				    "The name for this element set",
-				    "element",
-				    G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elemset_props[CTL_ELEMSET_PROP_FD] =
+		g_param_spec_int("fd", "fd",
+			"file descriptor for special file of control device",
+				 INT_MIN, INT_MAX,
+				 -1,
+				 G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 	ctl_elemset_props[CTL_ELEMSET_PROP_TYPE] =
 		g_param_spec_int("type", "type",
 				 "The type of this element",
 				 0, INT_MAX,
 				 0,
 				 G_PARAM_READABLE);
+	ctl_elemset_props[CTL_ELEMSET_PROP_ELEMENTS] =
+		g_param_spec_uint("count", "count",
+				  "The number of elements in this element set",
+				  0, UINT_MAX,
+				  0,
+				  G_PARAM_READABLE);
+	ctl_elemset_props[CTL_ELEMSET_PROP_NAME] =
+		g_param_spec_string("name", "name",
+				    "The name for this element set",
+				    "element",
+				   G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	ctl_elemset_props[CTL_ELEMSET_PROP_ID] =
 		g_param_spec_uint("id", "id",
 				  "The numerical ID for this element set",
@@ -210,12 +228,6 @@ static void alsactl_elemset_class_init(ALSACtlElemsetClass *klass)
 				  0, UINT_MAX,
 				  0,
 				  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-	ctl_elemset_props[CTL_ELEMSET_PROP_ELEMENTS] =
-		g_param_spec_uint("count", "count",
-				  "The number of elements in this element set",
-				  0, UINT_MAX,
-				  0,
-				  G_PARAM_READABLE);
 	ctl_elemset_props[CTL_ELEMSET_PROP_READABLE] =
 		g_param_spec_boolean("readable", "readable",
 				"Whether this element set is readable or not",
@@ -241,9 +253,9 @@ static void alsactl_elemset_class_init(ALSACtlElemsetClass *klass)
 				"Whether this element set is locked or not",
 				     FALSE,
 				     G_PARAM_READABLE);
-	ctl_elemset_props[CTL_ELEMSET_PROP_IS_MINE] =
-		g_param_spec_boolean("is-mine", "is-mine",
-			"Whether this process owns this element set or not",
+	ctl_elemset_props[CTL_ELEMSET_PROP_IS_OWNED] =
+		g_param_spec_boolean("is-owned", "is-owned",
+			"Whether some processes owns this element set or not",
 				     FALSE,
 				     G_PARAM_READABLE);
 	ctl_elemset_props[CTL_ELEMSET_PROP_IS_USER] =
@@ -299,76 +311,54 @@ static void alsactl_elemset_class_init(ALSACtlElemsetClass *klass)
 static void alsactl_elemset_init(ALSACtlElemset *self)
 {
 	self->priv = alsactl_elemset_get_instance_private(self);
-	/* Mmm... */
-	snd_ctl_elem_info_malloc(&self->priv->info);
 }
 
 void alsactl_elemset_update(ALSACtlElemset *self, GError **exception)
 {
 	ALSACtlElemsetPrivate *priv;
-	int err;
+	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_ELEMSET(self));
 	priv = CTL_ELEMSET_GET_PRIVATE(self);
 
-	if (self->client->handle == NULL) {
-		err = -EINVAL;
-		goto end;
-	}
-
-	err = snd_ctl_elem_info(self->client->handle, priv->info);
-end:
-	if (err < 0)
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    -errno, "%s", strerror(-errno));
+	}
 }
 
 void alsactl_elemset_lock(ALSACtlElemset *self, GError **exception)
 {
 	ALSACtlElemsetPrivate *priv;
-	snd_ctl_elem_id_t *id;
-	int err;
+	struct snd_ctl_elem_id *id;
+	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_ELEMSET(self));
 	priv = CTL_ELEMSET_GET_PRIVATE(self);
 
-	if (self->client->handle == NULL) {
+	id = &priv->info.id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
-		return;
+			    -errno, "%s", strerror(-errno));
+	} else {
+		alsactl_elemset_update(self, exception);
 	}
-
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_info_get_id(priv->info, id);
-	err = snd_ctl_elem_lock(self->client->handle, id);
-	if (err < 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-
-	alsactl_elemset_update(self, exception);
 }
 
 void alsactl_elemset_unlock(ALSACtlElemset *self, GError **exception)
 {
 	ALSACtlElemsetPrivate *priv;
-	snd_ctl_elem_id_t *id;
+	struct snd_ctl_elem_id *id;
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_ELEMSET(self));
 	priv = CTL_ELEMSET_GET_PRIVATE(self);
 
-	if (self->client->handle == NULL) {
+	id = &priv->info.id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0) {
+		alsactl_elemset_update(self, exception);
+	} else if (errno != -EINVAL) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
-		return;
+			    -errno, "%s", strerror(-errno));
 	}
-
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_info_get_id(priv->info, id);
-	err = snd_ctl_elem_unlock(self->client->handle, id);
-	if (err < 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-
-	alsactl_elemset_update(self, exception);
 }

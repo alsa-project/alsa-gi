@@ -4,7 +4,7 @@
 #include <glib.h>
 #include <glib-object.h>
 
-#include <alsa/asoundlib.h>
+#include <sound/asound.h>
 
 #include "elemset.h"
 
@@ -41,7 +41,7 @@ struct _ALSACtlClient {
 
 	ALSACtlClientPrivate *priv;
 
-	snd_ctl_t *handle;
+	int fd;
 };
 
 struct _ALSACtlClientClass {
@@ -50,7 +50,8 @@ struct _ALSACtlClientClass {
 
 GType alsactl_client_get_type(void) G_GNUC_CONST;
 
-ALSACtlClient *alsactl_client_open(const gchar *node, GError **exception);
+void alsactl_client_open(ALSACtlClient *self, const gchar *path,
+			 GError **exception);
 
 void alsactl_client_listen(ALSACtlClient *self, GError **exception);
 void alsactl_client_unlisten(ALSACtlClient *self);
