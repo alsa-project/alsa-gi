@@ -45,12 +45,18 @@ struct _ALSATimerClientClass
 
 GType alsatimer_client_get_type(void) G_GNUC_CONST;
 
-ALSATimerClient *alsatimer_client_new(gchar *str, GError **exception);
-
+void alsatimer_client_open(ALSATimerClient *self, gchar *path,
+			   GError **exception);
+void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
+				    GError **exception);
+void alsatimer_client_select_timer(ALSATimerClient *self,
+				   unsigned int class, unsigned int subclass,
+				   unsigned int card,
+				   unsigned int device, unsigned int subdevice,
+				   GError **exception);
 void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 				 GError **exception);
-
-void alsatimer_client_start(ALSATimerClient *client, GError **exception);
-void alsatimer_client_stop(ALSATimerClient *client, GError **exception);
-void alsatimer_client_resume(ALSATimerClient *client, GError **exception);
+void alsatimer_client_start(ALSATimerClient *self, GError **exception);
+void alsatimer_client_stop(ALSATimerClient *self, GError **exception);
+void alsatimer_client_resume(ALSATimerClient *self, GError **exception);
 #endif

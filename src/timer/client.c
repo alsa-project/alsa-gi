@@ -1,4 +1,15 @@
-#include <alsa/asoundlib.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/ioctl.h>
+#include <stddef.h>
+
+#include <sound/asound.h>
+
 #include "client.h"
 #include "alsatimer_sigs_marshal.h"
 
@@ -13,9 +24,10 @@ typedef struct {
 } TimerClientSource;
 
 struct _ALSATimerClientPrivate {
-	snd_timer_info_t *info;
-	snd_timer_params_t *params;
-	snd_timer_t *handle;
+	int fd;
+	struct snd_timer_id id;
+	struct snd_timer_info info;
+	struct snd_timer_params params;
 
 	TimerClientSource *src;
 	void *buf;
@@ -46,12 +58,12 @@ enum timer_client_prop {
 };
 static GParamSpec *timer_client_props[TIMER_CLIENT_PROP_COUNT] = { NULL, };
 
-enum timer_client_signal {
-	TIMER_CLIENT_SIGNAL_EVENT = 1,
-	TIMER_CLIENT_SIGNAL_COUNT,
+enum timer_client_sig {
+	TIMER_CLIENT_SIG_EVENT = 1,
+	TIMER_CLIENT_SIG_COUNT,
 };
 
-static guint timer_client_signals[TIMER_CLIENT_SIGNAL_COUNT] = { 0 };
+static guint timer_client_sigs[TIMER_CLIENT_SIG_COUNT] = { 0 };
 
 static void timer_client_get_property(GObject *obj, guint id,
 				      GValue *val, GParamSpec *spec)
@@ -61,44 +73,41 @@ static void timer_client_get_property(GObject *obj, guint id,
 
 	switch (id) {
 	case TIMER_CLIENT_PROP_ID:
-		g_value_set_string(val, snd_timer_info_get_id(priv->info));
+		g_value_set_string(val, priv->info.id);
 		break;
 	case TIMER_CLIENT_PROP_NAME:
-		g_value_set_string(val, snd_timer_info_get_name(priv->info));
+		g_value_set_string(val, priv->info.name);
 		break;
 	case TIMER_CLIENT_PROP_IS_SLAVE:
-		g_value_set_boolean(val, snd_timer_info_is_slave(priv->info));
+		g_value_set_boolean(val,
+				priv->info.flags & SNDRV_TIMER_FLG_SLAVE);
 		break;
 	case TIMER_CLIENT_PROP_CARD:
-		g_value_set_int(val, snd_timer_info_get_card(priv->info));
+		g_value_set_int(val, priv->info.card);
 		break;
 	case TIMER_CLIENT_PROP_RESOLUTION:
-		g_value_set_long(val,
-				 snd_timer_info_get_resolution(priv->info));
+		g_value_set_long(val, priv->info.resolution);
 		break;
 	case TIMER_CLIENT_PROP_AUTO_START:
 		g_value_set_boolean(val,
-				snd_timer_params_get_auto_start(priv->params));
+				priv->params.flags & SNDRV_TIMER_PSFLG_AUTO);
 		break;
 	case TIMER_CLIENT_PROP_EXCLUSIVE:
 		g_value_set_boolean(val,
-				snd_timer_params_get_exclusive(priv->params));
+			priv->params.flags & SNDRV_TIMER_PSFLG_EXCLUSIVE);
 		break;
 	case TIMER_CLIENT_PROP_EARLY_EVENT:
 		g_value_set_boolean(val,
-				snd_timer_params_get_early_event(priv->params));
+			priv->params.flags & SNDRV_TIMER_PSFLG_EARLY_EVENT);
 		break;
 	case TIMER_CLIENT_PROP_TICKS:
-		g_value_set_long(val,
-				 snd_timer_params_get_ticks(priv->params));
+		g_value_set_long(val, priv->params.ticks);
 		break;
 	case TIMER_CLIENT_PROP_QUEUE_SIZE:
-		g_value_set_long(val,
-				 snd_timer_params_get_queue_size(priv->params));
+		g_value_set_long(val, priv->params.queue_size);
 		break;
 	case TIMER_CLIENT_PROP_FILTER:
-		g_value_set_uint(val,
-				 snd_timer_params_get_filter(priv->params));
+		g_value_set_uint(val, priv->params.filter);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, id, spec);
@@ -114,28 +123,31 @@ static void timer_client_set_property(GObject *obj, guint id,
 
 	switch(id) {
 	case TIMER_CLIENT_PROP_AUTO_START:
-		snd_timer_params_set_auto_start(priv->params,
-						g_value_get_boolean(val));
+		if (g_value_get_boolean(val))
+			priv->params.flags |= SNDRV_TIMER_PSFLG_AUTO;
+		else
+			priv->params.flags &= ~SNDRV_TIMER_PSFLG_AUTO;
 		break;
 	case TIMER_CLIENT_PROP_EXCLUSIVE:
-		snd_timer_params_set_exclusive(priv->params,
-					       g_value_get_boolean(val));
+		if (g_value_get_boolean(val))
+			priv->params.flags |= SNDRV_TIMER_PSFLG_EXCLUSIVE;
+		else
+			priv->params.flags &= ~SNDRV_TIMER_PSFLG_EXCLUSIVE;
 		break;
 	case TIMER_CLIENT_PROP_EARLY_EVENT:
-		snd_timer_params_set_early_event(priv->params,
-						 g_value_get_boolean(val));
+		if (g_value_get_boolean(val))
+			priv->params.flags |= SNDRV_TIMER_PSFLG_EARLY_EVENT;
+		else
+			priv->params.flags &= ~SNDRV_TIMER_PSFLG_EARLY_EVENT;
 		break;
 	case TIMER_CLIENT_PROP_TICKS:
-		snd_timer_params_set_ticks(priv->params,
-					   g_value_get_long(val));
+		priv->params.ticks = g_value_get_long(val);
 		break;
 	case TIMER_CLIENT_PROP_QUEUE_SIZE:
-		snd_timer_params_set_queue_size(priv->params,
-						g_value_get_long(val));
+		priv->params.queue_size = g_value_get_long(val);
 		break;
 	case TIMER_CLIENT_PROP_FILTER:
-		snd_timer_params_set_filter(priv->params,
-					    g_value_get_uint(val));
+		priv->params.filter = g_value_get_uint(val);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -153,8 +165,7 @@ static void timer_client_finalize(GObject *gobject)
 	ALSATimerClient *self = ALSATIMER_CLIENT(gobject);
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 
-	snd_timer_info_free(priv->info);
-	snd_timer_close(priv->handle);
+	close(priv->fd);
 
 	G_OBJECT_CLASS(alsatimer_client_parent_class)->finalize(gobject);
 }
@@ -229,15 +240,15 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
 				  0,
 				  G_PARAM_READWRITE);
 
-	timer_client_signals[TIMER_CLIENT_SIGNAL_EVENT] =
+	timer_client_sigs[TIMER_CLIENT_SIG_EVENT] =
 		g_signal_new("event",
 		     G_OBJECT_CLASS_TYPE(klass),
 		     G_SIGNAL_RUN_LAST,
 		     0,
 		     NULL, NULL,
-		     alsatimer_sigs_marshal_VOID__INT_LONG_LONG_UINT,
+		     alsatimer_sigs_marshal_VOID__STRING_LONG_LONG_UINT,
 		     G_TYPE_NONE, 4,
-		     G_TYPE_INT, G_TYPE_LONG, G_TYPE_LONG, G_TYPE_UINT);
+		     G_TYPE_STRING, G_TYPE_LONG, G_TYPE_LONG, G_TYPE_UINT);
 
 	g_object_class_install_properties(gobject_class,
 					  TIMER_CLIENT_PROP_COUNT,
@@ -249,81 +260,141 @@ static void alsatimer_client_init(ALSATimerClient *self)
 	self->priv = alsatimer_client_get_instance_private(self);
 }
 
-ALSATimerClient *alsatimer_client_new(gchar *timer, GError **exception)
+/**
+ * alsatimer_client_open:
+ * @self: A #ALSATimerClient
+ * @path: A full path of a special file for ALSA timer character device
+ * @exception: A #GError
+ *
+ * Open ALSA Timer character device.
+ */
+void alsatimer_client_open(ALSATimerClient *self, gchar *path,
+			   GError **exception)
 {
-	ALSATimerClient *self;
 	ALSATimerClientPrivate *priv;
+	int flag = 1;
 
-	snd_timer_t *handle;
-	snd_timer_info_t *info;
-	snd_timer_params_t *params;
-
-	int err;
-
-	/* NOTE: Open with enhanced event notification. */
-	err = snd_timer_open(&handle, timer, SND_TIMER_OPEN_TREAD);
-	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return NULL;
-	}
-
-	err = snd_timer_info_malloc(&info);
-	if (err < 0) {
-		snd_timer_close(handle);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return NULL;
-	}
-
-	err = snd_timer_params_malloc(&params);
-	if (err < 0) {
-		snd_timer_params_free(params);
-		snd_timer_info_free(info);
-		snd_timer_close(handle);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return NULL;
-	}
-
-	err = snd_timer_info(handle, info);
-	if (err < 0) {
-		snd_timer_params_free(params);
-		snd_timer_info_free(info);
-		snd_timer_close(handle);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return NULL;
-	}
-
-	snd_timer_params_set_ticks(params, 1);
-	snd_timer_params_set_queue_size(params, 128);
-	err = snd_timer_params(handle, params);
-	if (err < 0) {
-		snd_timer_params_free(params);
-		snd_timer_info_free(info);
-		snd_timer_close(handle);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return NULL;
-	}
-
-	self =  g_object_new(ALSATIMER_TYPE_CLIENT, NULL);
-	if (self == NULL) {
-		snd_timer_params_free(params);
-		snd_timer_info_free(info);
-		snd_timer_close(handle);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", snd_strerror(ENOMEM));
-		return NULL;
-	}
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
-	priv->info = info;
-	priv->params = params;
-	priv->handle = handle;
+	priv->fd = open(path, O_RDONLY);
+	if (priv->fd < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return;
+	}
 
-	return self;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_TREAD, &flag) < 0)
+		goto error;
+
+	/* Select system timer as a default. */
+	alsatimer_client_select_timer(self,
+				      SNDRV_TIMER_CLASS_GLOBAL,
+				      SNDRV_TIMER_SCLASS_NONE,
+				      -1, SNDRV_TIMER_GLOBAL_SYSTEM, 0,
+				      exception);
+
+	return;
+error:
+	g_set_error(exception, g_quark_from_static_string(__func__),
+		    errno, "%s", strerror(errno));
+	close(priv->fd);
+}
+
+/*
+	SNDRV_TIMER_CLASS_NONE = -1,
+	SNDRV_TIMER_CLASS_SLAVE = 0,
+	SNDRV_TIMER_CLASS_GLOBAL,
+	SNDRV_TIMER_CLASS_CARD,
+	SNDRV_TIMER_CLASS_PCM,
+	SNDRV_TIMER_CLASS_LAST = SNDRV_TIMER_CLASS_PCM,
+ */
+/*
+	SNDRV_TIMER_SCLASS_NONE = 0,
+	SNDRV_TIMER_SCLASS_APPLICATION,
+	SNDRV_TIMER_SCLASS_SEQUENCER,
+	SNDRV_TIMER_SCLASS_OSS_SEQUENCER,
+	SNDRV_TIMER_SCLASS_LAST = SNDRV_TIMER_SCLASS_OSS_SEQUENCER,
+*/
+/**
+ * alsatimer_client_get_timer_list:
+ * @self: A #ALSATimerClient
+ * @list: (element-type guint)(array)(out caller-allocates):
+ * @exception: A #GError
+ */
+void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
+				    GError **exception)
+{
+	ALSATimerClientPrivate *priv;
+	struct snd_timer_id id = {0};
+	struct snd_timer_ginfo info ={0};
+
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	id.dev_class = SNDRV_TIMER_CLASS_NONE;
+	while (1) {
+		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_NEXT_DEVICE, &id) < 0)
+			goto error;
+		if (id.dev_class == SNDRV_TIMER_CLASS_NONE)
+			break;
+		info.tid = id;
+		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_GINFO, &info) < 0)
+			goto error;
+		printf("%s: %s\n", info.id, info.name);
+	}
+
+	return;
+error:
+	g_set_error(exception, g_quark_from_static_string(__func__),
+		    errno, "%s", strerror(errno));
+}
+
+/**
+ * alsatimer_client_assign_timer:
+ * @self: A #ALSATimerClient
+ * @class: a numerical value for class
+ * @subclass: a numerical value for subclass
+ * @card: a numerical value for card
+ * @device: a numerical value for device
+ * @subdevice: a numerical value for subdevice
+ * @exception: A #GError
+ */
+void alsatimer_client_select_timer(ALSATimerClient *self,
+				   unsigned int class, unsigned int subclass,
+				   unsigned int card,
+				   unsigned int device, unsigned int subdevice,
+				   GError **exception)
+{
+	ALSATimerClientPrivate *priv;
+	struct snd_timer_select target = {0};
+
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	target.id.dev_class = class;
+	target.id.dev_sclass = subclass;
+	target.id.card = card;
+	target.id.device = device;
+	target.id.subdevice = subdevice;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_SELECT, &target) < 0)
+		goto error;
+
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_INFO, &priv->info) < 0)
+		goto error;
+
+	priv->params.ticks = 1;
+	priv->params.queue_size = 128;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0)
+		goto error;
+
+	/* Keep my id. */
+	priv->id = target.id;
+
+	return;
+error:
+	g_set_error(exception, g_quark_from_static_string(__func__),
+		    errno, "%s", strerror(errno));
 }
 
 /**
@@ -336,31 +407,25 @@ ALSATimerClient *alsatimer_client_new(gchar *timer, GError **exception)
 void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 				 GError **exception)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
-
-	snd_htimestamp_t ts = {0};
-	snd_timer_status_t *s;
-	long val;
+	ALSATimerClientPrivate *priv;
+	struct snd_timer_status s = {0};
 	int err;
 
-	snd_timer_status_alloca(&s);
-	err = snd_timer_status(priv->handle, s);
-	if (err < 0) {
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STATUS, &s) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    errno, "%s", strerror(errno));
 		return;
 	}
 
 	/* NOTE: narrow-conversions are expected... */
-	ts = snd_timer_status_get_timestamp(s);
-	g_array_append_val(status, ts.tv_sec);
-	g_array_append_val(status, ts.tv_nsec);
-	val = snd_timer_status_get_lost(s);
-	g_array_append_val(status, val);
-	val = snd_timer_status_get_overrun(s);
-	g_array_append_val(status, val);
-	val = snd_timer_status_get_queue(s);
-	g_array_append_val(status, val);
+	g_array_append_val(status, s.tstamp.tv_sec);
+	g_array_append_val(status, s.tstamp.tv_nsec);
+	g_array_append_val(status, s.lost);
+	g_array_append_val(status, s.overrun);
+	g_array_append_val(status, s.queue);
 }
 
 static gboolean prepare_src(GSource *gsrc, gint *timeout)
@@ -371,6 +436,24 @@ static gboolean prepare_src(GSource *gsrc, gint *timeout)
 	return FALSE;
 }
 
+static const char *const ev_name[] = {
+	[SNDRV_TIMER_EVENT_RESOLUTION]	= "resolution",
+	[SNDRV_TIMER_EVENT_TICK]	= "tick",
+	[SNDRV_TIMER_EVENT_START]	= "start",
+	[SNDRV_TIMER_EVENT_STOP]	= "stop",
+	[SNDRV_TIMER_EVENT_CONTINUE]	= "continue",
+	[SNDRV_TIMER_EVENT_PAUSE]	= "pause",
+	[SNDRV_TIMER_EVENT_EARLY]	= "early",
+	[SNDRV_TIMER_EVENT_SUSPEND]	= "suspend",
+	[SNDRV_TIMER_EVENT_RESUME]	= "resume",
+	[SNDRV_TIMER_EVENT_MSTART]	= "master-start",
+	[SNDRV_TIMER_EVENT_MSTOP]	= "master-stop",
+	[SNDRV_TIMER_EVENT_MCONTINUE]	= "master-continue",
+	[SNDRV_TIMER_EVENT_MPAUSE]	= "master-pause",
+	[SNDRV_TIMER_EVENT_MSUSPEND]	= "master-suspend",
+	[SNDRV_TIMER_EVENT_MRESUME]	= "master-resume",
+};
+
 static gboolean check_src(GSource *gsrc)
 {
 	TimerClientSource *src = (TimerClientSource *)gsrc;
@@ -379,25 +462,26 @@ static gboolean check_src(GSource *gsrc)
 	ALSATimerClient *self = src->self;
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 
-	snd_timer_tread_t *ev;
+	struct snd_timer_tread *ev;
 	ssize_t len;
 
 	condition = g_source_query_unix_fd((GSource *)src, src->tag);
-
 	if (!(condition & G_IO_IN))
 		goto end;
 
-	len = snd_timer_read(priv->handle, priv->buf, priv->len);
+	len = read(priv->fd, priv->buf, priv->len);
 	if (len < 0)
 		goto end;
 
 	while (len > 0) {
-		ev = (snd_timer_tread_t *)priv->buf;
-		g_signal_emit(self,
-			      timer_client_signals[TIMER_CLIENT_SIGNAL_EVENT],
-			      0, ev->event, ev->tstamp.tv_sec,
-			      ev->tstamp.tv_nsec, ev->val);
-		len -= sizeof(snd_timer_tread_t);
+		ev = (struct snd_timer_tread *)priv->buf;
+		if (ev->event <= SNDRV_TIMER_EVENT_MRESUME) {
+			g_signal_emit(self,
+				      timer_client_sigs[TIMER_CLIENT_SIG_EVENT],
+				      0, ev_name[ev->event], ev->tstamp.tv_sec,
+				      ev->tstamp.tv_nsec, ev->val);
+		}
+		len -= sizeof(struct snd_timer_tread);
 	}
 end:
 	return FALSE;
@@ -418,35 +502,31 @@ static void finalize_src(GSource *gsrc)
 
 static void listen_client(ALSATimerClient *self, GError **exception)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
-	struct pollfd pfds;
-
 	static GSourceFuncs funcs = {
 		.prepare	= prepare_src,
 		.check		= check_src,
 		.dispatch	= dispatch_src,
 		.finalize	= finalize_src,
 	};
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 	GSource *src;
+	int err;
 
 	/* Keep a memory so as to store 10 events. */
-	priv->len = sizeof(snd_timer_tread_t) * 10;
+	priv->len = sizeof(struct snd_timer_tread) * 10;
 	priv->buf = g_malloc0(priv->len);
 	if (priv->buf == NULL) {
-		priv->len = 0;
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
-		return;
+		err = ENOMEM;
+		goto error;
 	}
 
 	/* Create a source. */
 	src = g_source_new(&funcs, sizeof(TimerClientSource));
 	if (src == NULL) {
-		g_free(priv->buf);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
-		return;
+		err = ENOMEM;
+		goto error;
 	}
+
 	g_source_set_name(src, "ALSATimerClient");
 	g_source_set_priority(src, G_PRIORITY_HIGH_IDLE);
 	g_source_set_can_recurse(src, TRUE);
@@ -455,14 +535,24 @@ static void listen_client(ALSATimerClient *self, GError **exception)
 
 	/* Attach the source to context. */
 	g_source_attach(src, g_main_context_default());
-	snd_timer_poll_descriptors(priv->handle, &pfds, 1);
 	((TimerClientSource *)src)->tag =
-			g_source_add_unix_fd(src, pfds.fd, G_IO_IN);
+				g_source_add_unix_fd(src, priv->fd, G_IO_IN);
+
+	return;
+error:
+	if (priv->buf != NULL)
+		g_free(priv->buf);
+	priv->len = 0;
+	g_set_error(exception, g_quark_from_static_string(__func__),
+		    err, "%s", strerror(err));
 }
 
 static void unlisten_client(ALSATimerClient *self)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv;
+
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	g_source_destroy((GSource *)priv->src);
 	g_free(priv->src);
@@ -474,50 +564,54 @@ static void unlisten_client(ALSATimerClient *self)
 
 void alsatimer_client_start(ALSATimerClient *self, GError **exception)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
-	int err;
+	ALSATimerClientPrivate *priv;
 
-	err = snd_timer_params(priv->handle, priv->params);
-	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
-		return;
-	}
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0)
+		goto error;
 
 	listen_client(self, exception);
 	if (*exception != NULL)
 		return;
 
-	err = snd_timer_start(priv->handle);
-	if (err < 0) {
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_START) < 0) {
 		unlisten_client(self);
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+		goto error;
 	}
+
+	return;
+error:
+	g_set_error(exception, g_quark_from_static_string(__func__),
+		    errno, "%s", strerror(errno));
 }
 
 void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
-	int err;
+	ALSATimerClientPrivate *priv;
 
-	err = snd_timer_stop(priv->handle);
-	if (err < 0)
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STOP) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    errno, "%s", strerror(errno));
+	}
 
 	unlisten_client(self);
 }
 
 void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 {
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
-	int err;
+	ALSATimerClientPrivate *priv;
 
-	err = snd_timer_params(priv->handle, priv->params);
-	if (err < 0) {
+	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
+	priv = TIMER_CLIENT_GET_PRIVATE(self);
+
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    errno, "%s", strerror(errno));
 		return;
 	}
 
@@ -525,8 +619,8 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 	if (*exception != NULL)
 		return;
 
-	err = snd_timer_continue(priv->handle);
-	if (err < 0)
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_CONTINUE) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    errno, "%s", strerror(errno));
+	}
 }
