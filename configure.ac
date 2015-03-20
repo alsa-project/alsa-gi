@@ -167,7 +167,7 @@ AC_CONFIG_FILES([
   src/card/Makefile
   src/seq/Makefile
   src/timer/Makefile
-  src/control/Makefile
+  src/ctl/Makefile
   doc/Makefile
   doc/reference/Makefile
   doc/reference/version.xml

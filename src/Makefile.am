@@ -25,7 +25,7 @@ HWDEP_DIR=
 endif
 
 if ENABLE_CONTROL
-CONTROL_DIR=control
+CONTROL_DIR=ctl
 else
 CONTROL_DIR=
 endif
