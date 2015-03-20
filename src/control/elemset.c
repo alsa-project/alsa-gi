@@ -323,7 +323,7 @@ void alsactl_elemset_update(ALSACtlElemset *self, GError **exception)
 
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -errno, "%s", strerror(-errno));
+			    errno, "%s", strerror(errno));
 	}
 }
 
@@ -339,7 +339,7 @@ void alsactl_elemset_lock(ALSACtlElemset *self, GError **exception)
 	id = &priv->info.id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -errno, "%s", strerror(-errno));
+			    errno, "%s", strerror(errno));
 	} else {
 		alsactl_elemset_update(self, exception);
 	}
@@ -359,6 +359,6 @@ void alsactl_elemset_unlock(ALSACtlElemset *self, GError **exception)
 		alsactl_elemset_update(self, exception);
 	} else if (errno != -EINVAL) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -errno, "%s", strerror(-errno));
+			    errno, "%s", strerror(errno));
 	}
 }

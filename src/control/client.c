@@ -164,7 +164,7 @@ static int allocate_element_ids(ALSACtlClientPrivate *priv,
 
 	/* Get the number of elements in this control device. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0)
-		return -errno;
+		return errno;
 
 	/* No elements found. */
 	if (list->count == 0)
@@ -180,7 +180,7 @@ static int allocate_element_ids(ALSACtlClientPrivate *priv,
 	/* Get the IDs of elements in this control device. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
 		free(list->pids);
-		return -errno;
+		return errno;
 	}
 
 	return 0;
@@ -366,7 +366,7 @@ ALSACtlElemset *alsactl_client_add_elemset(ALSACtlClient *self, gint iface,
 
 	/* Add this element set. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		err = -errno;
+		err = errno;
 		goto end;
 	}
 	id = &info.id;
@@ -571,7 +571,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	/* Be sure to subscribe events. */
 	subscribe = 1;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe) < 0) {
-		err = -errno;
+		err = errno;
 		alsactl_client_unlisten(self);
 	}
 end:
