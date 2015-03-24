@@ -22,12 +22,27 @@ libalsactl_la_SOURCES =				\
 	client.h				\
 	client.c				\
 	elemset.h				\
-	elemset.c
+	elemset.c				\
+	elemset_int.h				\
+	elemset_int.c				\
+	elemset_bool.h				\
+	elemset_bool.c				\
+	elemset_enum.h				\
+	elemset_enum.c				\
+	elemset_byte.h				\
+	elemset_byte.c				\
+	elemset_iec60958.h			\
+	elemset_iec60958.c
 
 pkginclude_HEADERS = 				\
 	alsactl_sigs_marshal.h			\
 	client.h				\
-	elemset.h
+	elemset.h				\
+	elemset_int.h				\
+	elemset_bool.h				\
+	elemset_enum.h				\
+	elemset_byte.h				\
+	elemset_iec60958.h
 
 alsactl_sigs_marshal.list:
 	$(AM_V_GEN)( find | grep \.c$$ | xargs cat | 			\

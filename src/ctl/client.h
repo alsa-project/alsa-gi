@@ -62,10 +62,22 @@ void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
 typedef struct _ALSACtlElemset	ALSACtlElemset;
 ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 					   GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   guint64 min, guint64 max, guint step,
-					   GError **exception);
-void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElemset *elem,
-				GError **exception);
+ALSACtlElemset *alsactl_client_add_elemset_int(ALSACtlClient *self, gint iface,
+					       const gchar *name, guint count,
+					       guint64 min, guint64 max,
+					       guint step, GError **exception);
+ALSACtlElemset *alsactl_client_add_elemset_bool(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GError **exception);
+ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GArray *labels,
+						GError **exception);
+ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
+						    gint iface,
+						    const gchar *name,
+						    GError **exception);
+
+void alsactl_client_remove_elemset(ALSACtlClient *self, ALSACtlElemset *elem,
+				   GError **exception);
 #endif

@@ -31,10 +31,41 @@ except Exception as e:
     print(e)
     sys.exit()
 
-# Add my element set
-name = 'my-elemset-{0}'.format(time.strftime('%S'))
+# Add my int element set
+name = 'int-elemset-{0}'.format(time.strftime('%S'))
 try:
-    elemset = client.add_elemset(2, name, 10, 0, 10, 1)
+    elemset = client.add_elemset_int(2, name, 10, 0, 10, 1)
+    elemset.unlock()
+except Exception as e:
+    print(e)
+    sys.exit()
+elemsets.append(elemset)
+
+# Add my bool element set
+name = 'bool-elemset-{0}'.format(time.strftime('%S'))
+try:
+    elemset = client.add_elemset_bool(2, name, 8)
+    elemset.unlock()
+except Exception as e:
+    print(e)
+    sys.exit()
+elemsets.append(elemset)
+
+# Add my enum element set
+name = 'enum-elemset-{0}'.format(time.strftime('%S'))
+labels = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
+try:
+    elemset = client.add_elemset_enum(2, name, 6, labels)
+    elemset.unlock()
+except Exception as e:
+    print(e)
+    sys.exit()
+elemsets.append(elemset)
+
+# Add my iec60958 element set
+name = 'iec60958-elemset-{0}'.format(time.strftime('%S'))
+try:
+    elemset = client.add_elemset_iec60958(2, name)
     elemset.unlock()
 except Exception as e:
     print(e)

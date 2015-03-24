@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdint.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <stddef.h>
@@ -11,6 +12,11 @@
 #include <sound/asound.h>
 
 #include "client.h"
+#include "elemset_int.h"
+#include "elemset_bool.h"
+#include "elemset_enum.h"
+#include "elemset_byte.h"
+#include "elemset_iec60958.h"
 
 typedef struct {
 	GSource src;
@@ -256,10 +262,19 @@ static void insert_to_link_list(ALSACtlClient *self, ALSACtlElemset *elem)
 ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 					   GError **exception)
 {
+	GType types[] = {
+		[SNDRV_CTL_ELEM_TYPE_BOOLEAN] = ALSACTL_TYPE_ELEMSET_BOOL,
+		[SNDRV_CTL_ELEM_TYPE_INTEGER] = ALSACTL_TYPE_ELEMSET_INT,
+		[SNDRV_CTL_ELEM_TYPE_ENUMERATED] = ALSACTL_TYPE_ELEMSET_ENUM,
+		[SNDRV_CTL_ELEM_TYPE_BYTES] = ALSACTL_TYPE_ELEMSET_BYTE,
+		[SNDRV_CTL_ELEM_TYPE_IEC958] = ALSACTL_TYPE_ELEMSET_IEC60958,
+		[SNDRV_CTL_ELEM_TYPE_INTEGER64] = ALSACTL_TYPE_ELEMSET_INT,
+	};
 	ALSACtlClientPrivate *priv;
 	ALSACtlElemset *elemset = NULL;
 	struct snd_ctl_elem_list elem_list;
 	struct snd_ctl_elem_id *id;
+	struct snd_ctl_elem_info info = {0};
 	unsigned int i, count;
 	int err;
 
@@ -277,13 +292,21 @@ ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 			break;
 	}
 	if (i == count) {
-		err = ENODEV;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENODEV, "%s", strerror(ENODEV));
+		goto end;
+	}
+	id = &elem_list.pids[i];
+
+	info.id = *id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
 		goto end;
 	}
 
 	/* Keep the new instance for this element. */
-	id = &elem_list.pids[i];
-	elemset = g_object_new(ALSACTL_TYPE_ELEMSET,
+	elemset = g_object_new(types[info.type],
 			       "fd", priv->fd,
 			       "id", id->numid,
 			       "iface", id->iface,
@@ -311,68 +334,40 @@ end:
 	return elemset;
 }
 
-/**
- * alsactl_client_add_elemset:
- * @self: A #ALSACtlClient
- * @name: the name of new element set
- * @count: the number of elements in new element set
- * @min: the minimum value for elements in new element set
- * @max: the maximum value for elements in new element set
- * @step: the step of value for elements in new element set
- * @exception: A #GError
- *
- * Returns: (transfer full): A #ALSACtlElemset
- */
-ALSACtlElemset *alsactl_client_add_elemset(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   guint64 min, guint64 max,
-					   guint step, GError **exception)
+static int init_info(struct snd_ctl_elem_info *info, gint iface,
+		     const gchar *name, guint count, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
-	ALSACtlElemset *elemset = NULL;
-	struct snd_ctl_elem_info info = {0};
-	struct snd_ctl_elem_id *id;
-	int err;
-
-	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
-
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
-		err = EINVAL;
-		goto end;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return;
 	}
-	info.id.iface = iface;
+	info->id.iface = iface;
 
 	/* Check eleset name. */
-	if (name == NULL || strlen(name) >= sizeof(info.id.name)) {
-		err = EINVAL;
-		goto end;
+	if (name == NULL || strlen(name) >= sizeof(info->id.name)) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return;
 	}
-	strcpy(info.id.name, name);
+	strcpy(info->id.name, name);
 
-	info.access = SNDRV_CTL_ELEM_ACCESS_READWRITE;
-	info.count = count;
+	info->access = SNDRV_CTL_ELEM_ACCESS_USER |
+		       SNDRV_CTL_ELEM_ACCESS_READ |
+		       SNDRV_CTL_ELEM_ACCESS_WRITE;
+	info->count = count;
+}
 
-	/* Type-specific information. */
-	info.type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	if (min >= max || (max - min) % step) {
-		err = EINVAL;
-		goto end;
-	}
-	info.value.integer.min = min;
-	info.value.integer.max = max;
-	info.value.integer.step = step;
-
-	/* Add this element set. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		err = errno;
-		goto end;
-	}
-	id = &info.id;
+static ALSACtlElemset *add_elemset(ALSACtlClient *self, GType type,
+				   struct snd_ctl_elem_id *id,
+				   GError **exception)
+{
+	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
+	ALSACtlElemset *elemset = NULL;
 
 	/* Keep the new instance for this element. */
-	elemset = g_object_new(ALSACTL_TYPE_ELEMSET,
+	elemset = g_object_new(type,
 			       "fd", priv->fd,
 			       "id", id->numid,
 			       "iface", id->iface,
@@ -386,23 +381,293 @@ ALSACtlElemset *alsactl_client_add_elemset(ALSACtlClient *self, gint iface,
 	alsactl_elemset_update(elemset, exception);
 	if (*exception != NULL) {
 		g_clear_object(&elemset);
-		elemset = NULL;
-		goto end;
+		return NULL;
 	}
 
 	/* Insert this element to the list in this client. */
 	insert_to_link_list(self, elemset);
 
-	err = 0;
-end:
-	if (err > 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    err, "%s", strerror(err));
 	return elemset;
 }
 
-void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElemset *elemset,
-				GError **exception)
+/**
+ * alsactl_client_add_elemset_int:
+ * @self: A #ALSACtlClient
+ * @iface: the type of interface
+ * @name: the name of new element set
+ * @count: the number of elements in new element set
+ * @min: the minimum value for elements in new element set
+ * @max: the maximum value for elements in new element set
+ * @step: the step of value for elements in new element set
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElemset
+ */
+ALSACtlElemset *alsactl_client_add_elemset_int(ALSACtlClient *self, gint iface,
+					       const gchar *name, guint count,
+					       guint64 min, guint64 max,
+					       guint step, GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	GType type;
+	ALSACtlElemset *elemset = NULL;
+	struct snd_ctl_elem_info info = {0};
+	int err;
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	init_info(&info, iface, name, count, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* Type-specific information. */
+	if (max > UINT_MAX)
+		info.type = SNDRV_CTL_ELEM_TYPE_INTEGER64;
+	else
+		info.type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	if (min >= max || (max - min) % step) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return NULL;
+	}
+	info.value.integer.min = min;
+	info.value.integer.max = max;
+	info.value.integer.step = step;
+
+	/* Add this element set. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return NULL;
+	}
+
+	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_INT, &info.id,
+			      exception);
+	if (*exception != NULL)
+		return NULL;
+
+	return elemset;
+}
+
+/**
+ * alsactl_client_add_elemset_bool:
+ * @self: A #ALSACtlClient
+ * @iface: the type of interface
+ * @name: the name of new element set
+ * @count: the number of elements in new element set
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElemset
+ */
+ALSACtlElemset *alsactl_client_add_elemset_bool(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	GType type;
+	ALSACtlElemset *elemset = NULL;
+	struct snd_ctl_elem_info info = {0};
+	int err;
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	init_info(&info, iface, name, count, exception);
+	if (*exception)
+		return NULL;
+
+	/* Type-specific information. */
+	info.type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+
+	/* Add this element set. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return NULL;
+	}
+
+	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_BOOL, &info.id,
+			      exception);
+	if (*exception != NULL)
+		return NULL;
+
+	return elemset;
+}
+
+/**
+ * alsactl_client_add_elemset_enum:
+ * @self: A #ALSACtlClient
+ * @iface: the type of interface
+ * @name: the name of new element set
+ * @count: the number of elements in new element set
+ * @labels: (element-type utf8): (array) (in): string labels for each items
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElemset
+ */
+ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GArray *labels,
+						GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	GType type;
+	ALSACtlElemset *elemset = NULL;
+	struct snd_ctl_elem_info info = {0};
+	unsigned int i;
+	unsigned int len;
+	char *buf;
+	gchar *label;
+	int err;
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	init_info(&info, iface, name, count, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* Type-specific information. */
+	info.type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
+	info.value.enumerated.items = labels->len;
+
+	/* Calcurate total length of labels. */
+	len = 0;
+	for (i = 0; i < labels->len; i++)
+		len += strlen(g_array_index(labels, gchar *, i)) + 1;
+	if (len == 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return NULL;
+	}
+
+	/* Allocate temporary buffer. */
+	buf = malloc(len);
+	if (buf == NULL) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENOMEM, "%s", strerror(ENOMEM));
+		return NULL;
+	}
+	memset(buf, 0, len);
+
+	/* Copy labels. */
+	info.value.enumerated.names_ptr = (uintptr_t)buf;
+	info.value.enumerated.names_length = len;
+	for (i = 0; i < labels->len; i++) {
+		label = g_array_index(labels, gchar *, i);
+		memcpy(buf, label, strlen(label));
+		buf += strlen(label) + 1;
+	}
+
+	/* Add this element set. */
+	err = ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info);
+	free((void *)info.value.enumerated.names_ptr);
+	if (err < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return NULL;
+	}
+
+	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_ENUM, &info.id,
+			      exception);
+	if (*exception != NULL)
+		return NULL;
+
+	return elemset;
+}
+
+/**
+ * alsactl_client_add_elemset_byte:
+ * @self: A #ALSACtlClient
+ * @iface: the type of interface
+ * @name: the name of new element set
+ * @count: the number of elements in new element set
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElemset
+ */
+ALSACtlElemset *alsactl_client_add_elemset_byte(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	GType type;
+	ALSACtlElemset *elemset = NULL;
+	struct snd_ctl_elem_info info = {0};
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	init_info(&info, iface, name, count, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* Type-specific information. */
+	info.type = SNDRV_CTL_ELEM_TYPE_BYTES;
+
+	/* Add this element set. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return NULL;
+	}
+
+	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_BYTE, &info.id,
+			      exception);
+	if (*exception != NULL)
+		return NULL;
+
+	return elemset;
+}
+
+/**
+ * alsactl_client_add_elemset_iec60958:
+ * @self: A #ALSACtlClient
+ * @iface: the type of interface
+ * @name: the name of new element set
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElemset
+ */
+ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
+						    gint iface,
+						    const gchar *name,
+						    GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	GType type;
+	ALSACtlElemset *elemset = NULL;
+	struct snd_ctl_elem_info info = {0};
+	int err;
+
+	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	priv = CTL_CLIENT_GET_PRIVATE(self);
+
+	init_info(&info, iface, name, 1, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* Type-specific information. */
+	info.type = SNDRV_CTL_ELEM_TYPE_IEC958;
+
+	/* Add this element set. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return NULL;
+	}
+
+	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_IEC60958, &info.id,
+			      exception);
+	if (*exception != NULL)
+		return NULL;
+
+	return elemset;
+}
+
+void alsactl_client_remove_elemset(ALSACtlClient *self, ALSACtlElemset *elemset,
+				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GList *entry;
