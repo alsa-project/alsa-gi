@@ -2,19 +2,28 @@
 
 import sys
 
+# ALSATimer-1.0 gir
 from gi.repository import ALSATimer
 
-client = ALSATimer.Client()
+# For event loop
+from gi.repository import GLib
 
+# For UNIX signal handling
+import signal
+
+# Create client and open
+client = ALSATimer.Client()
 try:
     client.open('/dev/snd/timer')
 except Exception as e:
     print(e)
     sys.exit()
 
-timers = client.get_timer_list()
-print(timers)
-#sys.exit()
+try:
+    timers = client.get_timer_list()
+except Exception as e:
+    print(e)
+    sys.exit()
 
 # Test Client object
 print(' Name:   {0}'.format(client.get_property('name')))
@@ -78,11 +87,17 @@ except Exception as e:
     sys.exit()
 print('  started')
 
-# Event loop
-from gi.repository import GLib
+# Handle unix signal
+def handle_unix_signal(self):
+    loop.quit()
+GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, \
+                     handle_unix_signal, None)
 
+# Event loop
 loop = GLib.MainLoop()
 loop.run()
 
 client.stop()
 print('  stopped')
+
+sys.exit()
