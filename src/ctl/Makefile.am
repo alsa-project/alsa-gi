@@ -21,28 +21,28 @@ libalsactl_la_SOURCES =				\
 	alsactl_sigs_marshal.c			\
 	client.h				\
 	client.c				\
-	elemset.h				\
-	elemset.c				\
-	elemset_int.h				\
-	elemset_int.c				\
-	elemset_bool.h				\
-	elemset_bool.c				\
-	elemset_enum.h				\
-	elemset_enum.c				\
-	elemset_byte.h				\
-	elemset_byte.c				\
-	elemset_iec60958.h			\
-	elemset_iec60958.c
+	elem.h					\
+	elem.c					\
+	elem_int.h				\
+	elem_int.c				\
+	elem_bool.h				\
+	elem_bool.c				\
+	elem_enum.h				\
+	elem_enum.c				\
+	elem_byte.h				\
+	elem_byte.c				\
+	elem_iec60958.h				\
+	elem_iec60958.c
 
 pkginclude_HEADERS = 				\
 	alsactl_sigs_marshal.h			\
 	client.h				\
-	elemset.h				\
-	elemset_int.h				\
-	elemset_bool.h				\
-	elemset_enum.h				\
-	elemset_byte.h				\
-	elemset_iec60958.h
+	elem.h					\
+	elem_int.h				\
+	elem_bool.h				\
+	elem_enum.h				\
+	elem_byte.h				\
+	elem_iec60958.h
 
 alsactl_sigs_marshal.list:
 	$(AM_V_GEN)( find | grep \.c$$ | xargs cat | 			\

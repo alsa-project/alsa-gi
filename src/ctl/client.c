@@ -12,11 +12,11 @@
 #include <sound/asound.h>
 
 #include "client.h"
-#include "elemset_int.h"
-#include "elemset_bool.h"
-#include "elemset_enum.h"
-#include "elemset_byte.h"
-#include "elemset_iec60958.h"
+#include "elem_int.h"
+#include "elem_bool.h"
+#include "elem_enum.h"
+#include "elem_byte.h"
+#include "elem_iec60958.h"
 
 typedef struct {
 	GSource src;
@@ -27,7 +27,7 @@ typedef struct {
 struct _ALSACtlClientPrivate {
 	struct snd_ctl_event event;
 
-	GList *elemsets;
+	GList *elems;
 	GMutex lock;
 
 	CtlClientSource *src;
@@ -119,7 +119,7 @@ static void alsactl_client_class_init(ALSACtlClientClass *klass)
 	/**
 	 * ALSACtlClient::added:
 	 * @self: A #ALSACtlClient
-	 * @id: The id of element set newly added
+	 * @id: The id of an element newly added
 	 */
 	ctl_client_sigs[CTL_CLIENT_SIG_ADDED] =
 		g_signal_new("added",
@@ -133,7 +133,7 @@ static void alsactl_client_class_init(ALSACtlClientClass *klass)
 static void alsactl_client_init(ALSACtlClient *self)
 {
 	self->priv = alsactl_client_get_instance_private(self);
-	self->priv->elemsets = NULL;
+	self->priv->elems = NULL;
 }
 
 /**
@@ -159,8 +159,8 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 	}
 }
 
-static int allocate_element_ids(ALSACtlClientPrivate *priv,
-				struct snd_ctl_elem_list *list)
+static int allocate_elem_ids(ALSACtlClientPrivate *priv,
+			     struct snd_ctl_elem_list *list)
 {
 	unsigned int i, count;
 	int err;
@@ -192,21 +192,21 @@ static int allocate_element_ids(ALSACtlClientPrivate *priv,
 	return 0;
 }
 
-static inline void deallocate_element_ids(struct snd_ctl_elem_list *list)
+static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
 {
 	if (list->pids != NULL)
 		free(list->pids);
 }
 
 /**
- * alsactl_client_get_elemset_list:
+ * alsactl_client_get_elem_list:
  * @self: An #ALSACtlClient
  * @list: (element-type guint)(array)(out caller-allocates): current ID of
  *	elements in this control device.
  * @exception: A #GError
  *
  */
-void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
+void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 				     GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -223,7 +223,7 @@ void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
 		goto end;
 	}
 
-	err = allocate_element_ids(priv, &elem_list);
+	err = allocate_elem_ids(priv, &elem_list);
 	if (err > 0)
 		goto end;
 	count = elem_list.count;
@@ -232,13 +232,13 @@ void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
 	for (i = 0; i < count; i++)
 		g_array_append_val(list, elem_list.pids[i].numid);
 end:
-	deallocate_element_ids(&elem_list);
+	deallocate_elem_ids(&elem_list);
 	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    err, "%s", strerror(err));
 }
 
-static void insert_to_link_list(ALSACtlClient *self, ALSACtlElemset *elem)
+static void insert_to_link_list(ALSACtlClient *self, ALSACtlElem *elem)
 {
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
 
@@ -247,31 +247,31 @@ static void insert_to_link_list(ALSACtlClient *self, ALSACtlElemset *elem)
 
 	/* Add this element to the list in this client. */
 	g_mutex_lock(&priv->lock);
-	priv->elemsets = g_list_append(priv->elemsets, elem);
+	priv->elems = g_list_append(priv->elems, elem);
 	g_mutex_unlock(&priv->lock);
 }
 
 /**
- * alsactl_client_get_elemset:
+ * alsactl_client_get_elem:
  * @self: A #ALSACtlClient
- * @numid: the numerical id for the element set
+ * @numid: the numerical id for the element
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
-					   GError **exception)
+ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
+				     GError **exception)
 {
 	GType types[] = {
-		[SNDRV_CTL_ELEM_TYPE_BOOLEAN] = ALSACTL_TYPE_ELEMSET_BOOL,
-		[SNDRV_CTL_ELEM_TYPE_INTEGER] = ALSACTL_TYPE_ELEMSET_INT,
-		[SNDRV_CTL_ELEM_TYPE_ENUMERATED] = ALSACTL_TYPE_ELEMSET_ENUM,
-		[SNDRV_CTL_ELEM_TYPE_BYTES] = ALSACTL_TYPE_ELEMSET_BYTE,
-		[SNDRV_CTL_ELEM_TYPE_IEC958] = ALSACTL_TYPE_ELEMSET_IEC60958,
-		[SNDRV_CTL_ELEM_TYPE_INTEGER64] = ALSACTL_TYPE_ELEMSET_INT,
+		[SNDRV_CTL_ELEM_TYPE_BOOLEAN] = ALSACTL_TYPE_ELEM_BOOL,
+		[SNDRV_CTL_ELEM_TYPE_INTEGER] = ALSACTL_TYPE_ELEM_INT,
+		[SNDRV_CTL_ELEM_TYPE_ENUMERATED] = ALSACTL_TYPE_ELEM_ENUM,
+		[SNDRV_CTL_ELEM_TYPE_BYTES] = ALSACTL_TYPE_ELEM_BYTE,
+		[SNDRV_CTL_ELEM_TYPE_IEC958] = ALSACTL_TYPE_ELEM_IEC60958,
+		[SNDRV_CTL_ELEM_TYPE_INTEGER64] = ALSACTL_TYPE_ELEM_INT,
 	};
 	ALSACtlClientPrivate *priv;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_list elem_list;
 	struct snd_ctl_elem_id *id;
 	struct snd_ctl_elem_info info = {0};
@@ -281,7 +281,7 @@ ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	err = allocate_element_ids(priv, &elem_list);
+	err = allocate_elem_ids(priv, &elem_list);
 	if (err > 0)
 		goto end;
 	count = elem_list.count;
@@ -306,32 +306,32 @@ ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
 	}
 
 	/* Keep the new instance for this element. */
-	elemset = g_object_new(types[info.type],
-			       "fd", priv->fd,
-			       "id", id->numid,
-			       "iface", id->iface,
-			       "device", id->device,
-			       "subdevice", id->subdevice,
-			       "name", id->name,
-			       NULL);
-	elemset->client = g_object_ref(self);
+	elems = g_object_new(types[info.type],
+			     "fd", priv->fd,
+			     "id", id->numid,
+			     "iface", id->iface,
+			     "device", id->device,
+			     "subdevice", id->subdevice,
+			     "name", id->name,
+			     NULL);
+	elems->client = g_object_ref(self);
 
 	/* Update the element information. */
-	alsactl_elemset_update(elemset, exception);
+	alsactl_elem_update(elems, exception);
 	if (*exception != NULL) {
-		g_clear_object(&elemset);
-		elemset = NULL;
+		g_clear_object(&elems);
+		elems = NULL;
 		goto end;
 	}
 
 	/* Insert this element to the list in this client. */
-	insert_to_link_list(self, elemset);
+	insert_to_link_list(self, elems);
 end:
-	deallocate_element_ids(&elem_list);
+	deallocate_elem_ids(&elem_list);
 	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    err, "%s", strerror(err));
-	return elemset;
+	return elems;
 }
 
 static int init_info(struct snd_ctl_elem_info *info, gint iface,
@@ -359,58 +359,57 @@ static int init_info(struct snd_ctl_elem_info *info, gint iface,
 	info->count = count;
 }
 
-static ALSACtlElemset *add_elemset(ALSACtlClient *self, GType type,
-				   struct snd_ctl_elem_id *id,
-				   GError **exception)
+static ALSACtlElem *add_elems(ALSACtlClient *self, GType type,
+			      struct snd_ctl_elem_id *id, GError **exception)
 {
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 
 	/* Keep the new instance for this element. */
-	elemset = g_object_new(type,
-			       "fd", priv->fd,
-			       "id", id->numid,
-			       "iface", id->iface,
-			       "device", id->device,
-			       "subdevice", id->subdevice,
-			       "name", id->name,
-			       NULL);
-	elemset->client = g_object_ref(self);
+	elems = g_object_new(type,
+			     "fd", priv->fd,
+			     "id", id->numid,
+			     "iface", id->iface,
+			     "device", id->device,
+			     "subdevice", id->subdevice,
+			     "name", id->name,
+			     NULL);
+	elems->client = g_object_ref(self);
 
 	/* Update the element information. */
-	alsactl_elemset_update(elemset, exception);
+	alsactl_elem_update(elems, exception);
 	if (*exception != NULL) {
-		g_clear_object(&elemset);
+		g_clear_object(&elems);
 		return NULL;
 	}
 
 	/* Insert this element to the list in this client. */
-	insert_to_link_list(self, elemset);
+	insert_to_link_list(self, elems);
 
-	return elemset;
+	return elems;
 }
 
 /**
- * alsactl_client_add_elemset_int:
+ * alsactl_client_add_int_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
- * @name: the name of new element set
- * @count: the number of elements in new element set
- * @min: the minimum value for elements in new element set
- * @max: the maximum value for elements in new element set
- * @step: the step of value for elements in new element set
+ * @name: the name of new elements
+ * @count: the number of values in each element
+ * @min: the minimum value for elements in new element
+ * @max: the maximum value for elements in new element
+ * @step: the step of value for elements in new element
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_add_elemset_int(ALSACtlClient *self, gint iface,
-					       const gchar *name, guint count,
-					       guint64 min, guint64 max,
-					       guint step, GError **exception)
+ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
+					  const gchar *name, guint count,
+					  guint64 min, guint64 max,
+					  guint step, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
@@ -435,38 +434,38 @@ ALSACtlElemset *alsactl_client_add_elemset_int(ALSACtlClient *self, gint iface,
 	info.value.integer.max = max;
 	info.value.integer.step = step;
 
-	/* Add this element set. */
+	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 		return NULL;
 	}
 
-	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_INT, &info.id,
+	elems = add_elems(self, ALSACTL_TYPE_ELEM_INT, &info.id,
 			      exception);
 	if (*exception != NULL)
 		return NULL;
 
-	return elemset;
+	return elems;
 }
 
 /**
- * alsactl_client_add_elemset_bool:
+ * alsactl_client_add_bool_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
- * @name: the name of new element set
- * @count: the number of elements in new element set
+ * @name: the name of new elements
+ * @count: the number of values in each element
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_add_elemset_bool(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GError **exception)
+ALSACtlElem *alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
+					   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
@@ -480,40 +479,40 @@ ALSACtlElemset *alsactl_client_add_elemset_bool(ALSACtlClient *self, gint iface,
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
 
-	/* Add this element set. */
+	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 		return NULL;
 	}
 
-	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_BOOL, &info.id,
+	elems = add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info.id,
 			      exception);
 	if (*exception != NULL)
 		return NULL;
 
-	return elemset;
+	return elems;
 }
 
 /**
- * alsactl_client_add_elemset_enum:
+ * alsactl_client_add_enum_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
- * @name: the name of new element set
- * @count: the number of elements in new element set
+ * @name: the name of new elements
+ * @count: the number of values in each element
  * @labels: (element-type utf8): (array) (in): string labels for each items
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GArray *labels,
-						GError **exception)
+ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
+					   GArray *labels,
+					   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	unsigned int i;
 	unsigned int len;
@@ -560,7 +559,7 @@ ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
 		buf += strlen(label) + 1;
 	}
 
-	/* Add this element set. */
+	/* Add this elements. */
 	err = ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info);
 	free((void *)info.value.enumerated.names_ptr);
 	if (err < 0) {
@@ -569,31 +568,31 @@ ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
 		return NULL;
 	}
 
-	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_ENUM, &info.id,
+	elems = add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info.id,
 			      exception);
 	if (*exception != NULL)
 		return NULL;
 
-	return elemset;
+	return elems;
 }
 
 /**
- * alsactl_client_add_elemset_byte:
+ * alsactl_client_add_byte_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
- * @name: the name of new element set
- * @count: the number of elements in new element set
+ * @name: the name of new elements
+ * @count: the number of values in each element
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_add_elemset_byte(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GError **exception)
+ALSACtlElem *alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
+					   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
@@ -606,38 +605,37 @@ ALSACtlElemset *alsactl_client_add_elemset_byte(ALSACtlClient *self, gint iface,
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_BYTES;
 
-	/* Add this element set. */
+	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 		return NULL;
 	}
 
-	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_BYTE, &info.id,
+	elems = add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info.id,
 			      exception);
 	if (*exception != NULL)
 		return NULL;
 
-	return elemset;
+	return elems;
 }
 
 /**
- * alsactl_client_add_elemset_iec60958:
+ * alsactl_client_add_iec60958_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
- * @name: the name of new element set
+ * @name: the name of new elements
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElemset
+ * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
-						    gint iface,
-						    const gchar *name,
-						    GError **exception)
+ALSACtlElem *alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
+					       const gchar *name,
+					       GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElemset *elemset = NULL;
+	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
@@ -651,37 +649,37 @@ ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_IEC958;
 
-	/* Add this element set. */
+	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 		return NULL;
 	}
 
-	elemset = add_elemset(self, ALSACTL_TYPE_ELEMSET_IEC60958, &info.id,
+	elems = add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info.id,
 			      exception);
 	if (*exception != NULL)
 		return NULL;
 
-	return elemset;
+	return elems;
 }
 
-void alsactl_client_remove_elemset(ALSACtlClient *self, ALSACtlElemset *elemset,
-				   GError **exception)
+void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elems,
+				GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GList *entry;
-	ALSACtlElemset *e;
+	ALSACtlElem *e;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
 	g_mutex_lock(&priv->lock);
-	for (entry = priv->elemsets; entry != NULL; entry = entry->next) {
-		if (entry->data != elemset)
+	for (entry = priv->elems; entry != NULL; entry = entry->next) {
+		if (entry->data != elems)
 			continue;
 
-		priv->elemsets = g_list_delete_link(priv->elemsets, entry);
+		priv->elems = g_list_delete_link(priv->elems, entry);
 		g_object_unref(self);
 	}
 	g_mutex_unlock(&priv->lock);
@@ -701,7 +699,7 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 {
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(client);
 	GList *entry;
-	ALSACtlElemset *elemset;
+	ALSACtlElem *elems;
 
 	GValue val = G_VALUE_INIT;
 	unsigned int numid;
@@ -722,12 +720,12 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 	/* Deliver the events to elements. */
 	g_mutex_lock(&priv->lock);
 	g_value_init(&val, G_TYPE_UINT);
-	for (entry = priv->elemsets; entry != NULL; entry = entry->next) {
-		elemset = (ALSACtlElemset *)entry->data;
-		if (!ALSACTL_IS_ELEMSET(elemset))
+	for (entry = priv->elems; entry != NULL; entry = entry->next) {
+		elems = (ALSACtlElem *)entry->data;
+		if (!ALSACTL_IS_ELEM(elems))
 			continue;
 
-		g_object_get_property(G_OBJECT(elemset), "id", &val);
+		g_object_get_property(G_OBJECT(elems), "id", &val);
 		numid = g_value_get_uint(&val);
 
 		/* Here, I check the value of numid only. */
@@ -736,21 +734,20 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 
 		/* The mask of remove event is strange, not mask. */
 		if (event == SNDRV_CTL_EVENT_MASK_REMOVE) {
-			priv->elemsets = g_list_delete_link(priv->elemsets,
-							    entry);
-			g_signal_emit_by_name(G_OBJECT(elemset), "removed",
+			priv->elems = g_list_delete_link(priv->elems, entry);
+			g_signal_emit_by_name(G_OBJECT(elems), "removed",
 					      NULL);
 			continue;
 		}
 
 		if (event & SNDRV_CTL_EVENT_MASK_VALUE)
-			g_signal_emit_by_name(G_OBJECT(elemset), "changed",
+			g_signal_emit_by_name(G_OBJECT(elems), "changed",
 					      NULL);
 		if (event & SNDRV_CTL_EVENT_MASK_INFO)
-			g_signal_emit_by_name(G_OBJECT(elemset), "updated",
+			g_signal_emit_by_name(G_OBJECT(elems), "updated",
 					      NULL);
 		if (event & SNDRV_CTL_EVENT_MASK_TLV)
-			g_signal_emit_by_name(G_OBJECT(elemset), "tlv", NULL);
+			g_signal_emit_by_name(G_OBJECT(elems), "tlv", NULL);
 	}
 	g_mutex_unlock(&priv->lock);
 }

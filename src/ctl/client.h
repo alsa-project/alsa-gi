@@ -6,7 +6,7 @@
 
 #include <sound/asound.h>
 
-#include "elemset.h"
+#include "elem.h"
 
 G_BEGIN_DECLS
 
@@ -56,31 +56,31 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 void alsactl_client_listen(ALSACtlClient *self, GError **exception);
 void alsactl_client_unlisten(ALSACtlClient *self);
 
-void alsactl_client_get_elemset_list(ALSACtlClient *self, GArray *list,
+void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 				     GError **exception);
 
-typedef struct _ALSACtlElemset	ALSACtlElemset;
-ALSACtlElemset *alsactl_client_get_elemset(ALSACtlClient *self, guint numid,
+typedef struct _ALSACtlElem	ALSACtlElem;
+ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
+				     GError **exception);
+ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
+					  const gchar *name, guint count,
+					  guint64 min, guint64 max,
+					  guint step, GError **exception);
+ALSACtlElem *alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
 					   GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset_int(ALSACtlClient *self, gint iface,
-					       const gchar *name, guint count,
-					       guint64 min, guint64 max,
-					       guint step, GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset_bool(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GArray *labels,
-						GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset_byte(ALSACtlClient *self, gint iface,
-						const gchar *name, guint count,
-						GError **exception);
-ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
-						    gint iface,
-						    const gchar *name,
-						    GError **exception);
+ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
+					   GArray *labels,
+					   GError **exception);
+ALSACtlElem *alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
+					   const gchar *name, guint count,
+					   GError **exception);
+ALSACtlElem *alsactl_client_add_iec60958_elems(ALSACtlClient *self,
+					       gint iface,
+					       const gchar *name,
+					       GError **exception);
 
-void alsactl_client_remove_elemset(ALSACtlClient *self, ALSACtlElemset *elem,
-				   GError **exception);
+void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem,
+				GError **exception);
 #endif

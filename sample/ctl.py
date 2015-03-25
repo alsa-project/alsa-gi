@@ -11,15 +11,15 @@ from gi.repository import GLib
 # For UNIX signal handling
 import signal
 
-# To get system time for elemset uniq name
+# To get system time for element uniq name
 import time
 
-elemsets = []
+elements = []
 
 # Create client nad open
 client = ALSACtl.Client()
 try:
-    client.open('/dev/snd/controlC1')
+    client.open('/dev/snd/controlC0')
 except Exception as e:
     print(e)
     sys.exit()
@@ -37,78 +37,78 @@ except Exception as e:
     print(e)
     sys.exit()
 
-# Add my int element set
-name = 'int-elemset-{0}'.format(time.strftime('%S'))
+# Add my int elements
+name = 'int-element-{0}'.format(time.strftime('%S'))
 try:
-    elemset = client.add_elemset_int(2, name, 10, 0, 10, 1)
-    elemset.unlock()
+    element = client.add_int_elems(2, name, 10, 0, 10, 1)
+    element.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elemsets.append(elemset)
+elements.append(element)
 
-# Add my bool element set
-name = 'bool-elemset-{0}'.format(time.strftime('%S'))
+# Add my bool elements
+name = 'bool-element-{0}'.format(time.strftime('%S'))
 try:
-    elemset = client.add_elemset_bool(2, name, 8)
-    elemset.unlock()
+    element = client.add_bool_elems(2, name, 8)
+    element.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elemsets.append(elemset)
+elements.append(element)
 
-# Add my enum element set
-name = 'enum-elemset-{0}'.format(time.strftime('%S'))
+# Add my enum elements
+name = 'enum-element-{0}'.format(time.strftime('%S'))
 labels = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
 try:
-    elemset = client.add_elemset_enum(2, name, 6, labels)
-    elemset.unlock()
+    element = client.add_enum_elems(2, name, 6, labels)
+    element.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elemsets.append(elemset)
+elements.append(element)
 
-# Add my byte element set
-name = 'byte-elemset-{0}'.format(time.strftime('%S'))
+# Add my byte elements
+name = 'byte-element-{0}'.format(time.strftime('%S'))
 try:
-    elemset = client.add_elemset_byte(2, name, 4)
-    elemset.unlock()
+    element = client.add_byte_elems(2, name, 4)
+    element.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elemsets.append(elemset)
+elements.append(element)
 
-# Add my iec60958 element set
-name = 'iec60958-elemset-{0}'.format(time.strftime('%S'))
+# Add my iec60958 elements
+name = 'iec60958-element-{0}'.format(time.strftime('%S'))
 try:
-    elemset = client.add_elemset_iec60958(2, name)
-    elemset.unlock()
+    element = client.add_iec60958_elems(2, name)
+    element.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elemsets.append(elemset)
+elements.append(element)
 
-# Get current element set list
+# Get current element list
 try:
-    elemset_list = client.get_elemset_list()
+    element_list = client.get_elem_list()
 except Excepion as e:
     print(e)
     sys.exit()
 
-# Print element set and its properties
+# Print element and its properties
 properties = ('id', 'type', 'iface', 'device', 'subdevice', 'count',
               'readable', 'writable', 'volatile', 'inactive', 'locked',
               'is-owned', 'is-user')
-for i in elemset_list:
+for i in element_list:
     try:
-        elemset = client.get_elemset(i);
+        element = client.get_elem(i);
     except Exception as e:
         print(e)
         sys.exit()
-    print('\n{0}'.format(elemset.get_property('name')))
+    print('\n{0}'.format(element.get_property('name')))
     for n in properties:
-        print('    {0}:	{1}'.format(n, elemset.get_property(n)))
-    elemsets.append(elemset)
+        print('    {0}:	{1}'.format(n, element.get_property(n)))
+    elements.append(element)
 
 # Assign GObject signal handlers
 def handle_changed_event(elem):
@@ -117,7 +117,7 @@ def handle_updated_event(elem, index):
     print('  updated: {0}'.format(elem.get_property('name')));
 def handle_removed_event(elem):
     print('  removed: {0}',format(elem.get_property('name')));
-for e in elemsets:
+for e in elements:
     e.connect('changed', handle_changed_event)
     e.connect('updated', handle_updated_event)
     e.connect('removed', handle_removed_event)
