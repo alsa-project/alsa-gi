@@ -23,7 +23,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
 enum ctl_elem_prop_type {
 	CTL_ELEM_PROP_FD = 1,
 	CTL_ELEM_PROP_TYPE,
-	CTL_ELEM_PROP_ELEMENTS,
+	CTL_ELEM_PROP_VALUES,
 	/* Identifications */
 	CTL_ELEM_PROP_NAME,
 	CTL_ELEM_PROP_ID,
@@ -61,7 +61,7 @@ static void ctl_elem_get_property(GObject *obj, guint id,
 	case CTL_ELEM_PROP_TYPE:
 		g_value_set_int(val, priv->info.type);
 		break;
-	case CTL_ELEM_PROP_ELEMENTS:
+	case CTL_ELEM_PROP_VALUES:
 		g_value_set_uint(val, priv->info.count);
 		break;
 	case CTL_ELEM_PROP_NAME:
@@ -193,7 +193,7 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 				 0, INT_MAX,
 				 0,
 				 G_PARAM_READABLE);
-	ctl_elem_props[CTL_ELEM_PROP_ELEMENTS] =
+	ctl_elem_props[CTL_ELEM_PROP_VALUES] =
 		g_param_spec_uint("count", "count",
 				  "The number of values in this element",
 				  0, UINT_MAX,
