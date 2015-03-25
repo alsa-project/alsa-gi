@@ -62,25 +62,26 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 typedef struct _ALSACtlElem	ALSACtlElem;
 ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 				     GError **exception);
-ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
-					  const gchar *name, guint count,
-					  guint64 min, guint64 max,
-					  guint step, GError **exception);
-ALSACtlElem *alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GError **exception);
-ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GArray *labels,
-					   GError **exception);
-ALSACtlElem *alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GError **exception);
-ALSACtlElem *alsactl_client_add_iec60958_elems(ALSACtlClient *self,
-					       gint iface,
-					       const gchar *name,
-					       GError **exception);
-
+void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
+				  guint number, const gchar *name,
+				  guint count, guint64 min, guint64 max,
+				  guint step, GArray *elems,
+				  GError **exception);
+void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
+				   guint number, const gchar *name,
+				   guint count, GArray *elems,
+				   GError **exception);
+void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
+				   guint number,  const gchar *name,
+				   guint count, GArray *labels,
+				   GArray *elems, GError **exception);
+void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
+				   guint number, const gchar *name,
+				   guint count, GArray *elems,
+				   GError **exception);
+void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
+				       guint number, const gchar *name,
+				       GArray *elems, GError **exception);
 void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem,
 				GError **exception);
 #endif

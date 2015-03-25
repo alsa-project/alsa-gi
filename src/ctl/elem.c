@@ -316,15 +316,26 @@ static void alsactl_elem_init(ALSACtlElem *self)
 void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	unsigned int numid;
 	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = CTL_ELEM_GET_PRIVATE(self);
 
+	/* The numid is rollback to a numid of the first element in this set. */
+	numid = priv->info.id.numid;
+
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 	}
+
+	/* Restore the numid, how ugly design this interface is... */
+	/*
+	 * TODO: upstream should fix this bug. numid or index should be
+	 * correct.
+	 */
+	priv->info.id.numid = numid;
 }
 
 void alsactl_elem_lock(ALSACtlElem *self, GError **exception)

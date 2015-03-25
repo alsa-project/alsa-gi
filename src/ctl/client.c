@@ -334,7 +334,7 @@ end:
 	return elems;
 }
 
-static int init_info(struct snd_ctl_elem_info *info, gint iface,
+static int init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
 		     const gchar *name, guint count, GError **exception)
 {
 	/* Check interface type. */
@@ -344,6 +344,9 @@ static int init_info(struct snd_ctl_elem_info *info, gint iface,
 		return;
 	}
 	info->id.iface = iface;
+
+	/* The number of elements added by this operation. */
+	info->owner = number;
 
 	/* Check eleset name. */
 	if (name == NULL || strlen(name) >= sizeof(info->id.name)) {
@@ -359,66 +362,84 @@ static int init_info(struct snd_ctl_elem_info *info, gint iface,
 	info->count = count;
 }
 
-static ALSACtlElem *add_elems(ALSACtlClient *self, GType type,
-			      struct snd_ctl_elem_id *id, GError **exception)
+static void add_elems(ALSACtlClient *self, GType type,
+		      struct snd_ctl_elem_id *id, unsigned int number,
+		      GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
-	ALSACtlElem *elems = NULL;
+	struct snd_ctl_elem_info info = {0};
+	ALSACtlElem *elem;
+	unsigned int i;
+
+	/* To get proper numeric ID, sigh... */
+	/* TODO: fix upstream. ELEM_ADD ioctl should fill enough info! */
+	info.id = *id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
+		g_set_error(exception,
+			    g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+		return;
+	}
+	*id = info.id;
 
 	/* Keep the new instance for this element. */
-	elems = g_object_new(type,
-			     "fd", priv->fd,
-			     "id", id->numid,
-			     "iface", id->iface,
-			     "device", id->device,
-			     "subdevice", id->subdevice,
-			     "name", id->name,
-			     NULL);
-	elems->client = g_object_ref(self);
+	for (i = 0; i < number; i++) {
+		elem = g_object_new(type,
+				    "fd", priv->fd,
+				    "id", id->numid + i,
+				    "iface", id->iface,
+				    "device", id->device,
+				    "subdevice", id->subdevice,
+				    "name", id->name,
+				    NULL);
+		elem->client = g_object_ref(self);
 
-	/* Update the element information. */
-	alsactl_elem_update(elems, exception);
-	if (*exception != NULL) {
-		g_clear_object(&elems);
-		return NULL;
+		/* Update the element information. */
+		alsactl_elem_update(elem, exception);
+		if (*exception != NULL) {
+			g_clear_object(&elem);
+			return;
+		}
+
+		/* Insert into given array. */
+		g_array_insert_val(elems, i, elem);
+
+		/* Insert this element to the list in this client. */
+		insert_to_link_list(self, elem);
 	}
-
-	/* Insert this element to the list in this client. */
-	insert_to_link_list(self, elems);
-
-	return elems;
 }
 
 /**
  * alsactl_client_add_int_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
+ * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @count: the number of values in each element
  * @min: the minimum value for elements in new element
  * @max: the maximum value for elements in new element
  * @step: the step of value for elements in new element
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
-					  const gchar *name, guint count,
-					  guint64 min, guint64 max,
-					  guint step, GError **exception)
+void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
+				  guint number, const gchar *name,
+				  guint count, guint64 min, guint64 max,
+				  guint step, GArray *elems,
+				  GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, name, count, exception);
+	init_info(&info, iface, number, name, count, exception);
 	if (*exception != NULL)
-		return NULL;
+		return;
 
 	/* Type-specific information. */
 	if (max > UINT_MAX)
@@ -428,7 +449,7 @@ ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	if (min >= max || (max - min) % step) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    EINVAL, "%s", strerror(EINVAL));
-		return NULL;
+		return;
 	}
 	info.value.integer.min = min;
 	info.value.integer.max = max;
@@ -438,43 +459,40 @@ ALSACtlElem *alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
-		return NULL;
+		return;
 	}
 
-	elems = add_elems(self, ALSACTL_TYPE_ELEM_INT, &info.id,
-			      exception);
-	if (*exception != NULL)
-		return NULL;
-
-	return elems;
+	add_elems(self, ALSACTL_TYPE_ELEM_INT, &info.id, number, elems,
+		  exception);
 }
 
 /**
  * alsactl_client_add_bool_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
+ * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @count: the number of values in each element
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElem *alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GError **exception)
+void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
+				   guint number, const gchar *name,
+				   guint count, GArray *elems,
+				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, name, count, exception);
+	init_info(&info, iface, number, name, count, exception);
 	if (*exception)
-		return NULL;
+		return;
 
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
@@ -483,36 +501,33 @@ ALSACtlElem *alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
-		return NULL;
+		return;
 	}
 
-	elems = add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info.id,
-			      exception);
-	if (*exception != NULL)
-		return NULL;
-
-	return elems;
+	add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info.id, number, elems,
+		  exception);
 }
 
 /**
  * alsactl_client_add_enum_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
+ * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @count: the number of values in each element
  * @labels: (element-type utf8): (array) (in): string labels for each items
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
  * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GArray *labels,
-					   GError **exception)
+void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
+				   guint number,  const gchar *name,
+				   guint count, GArray *labels,
+				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	unsigned int i;
 	unsigned int len;
@@ -523,9 +538,9 @@ ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, name, count, exception);
+	init_info(&info, iface, number, name, count, exception);
 	if (*exception != NULL)
-		return NULL;
+		return;
 
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
@@ -538,7 +553,7 @@ ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	if (len == 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    EINVAL, "%s", strerror(EINVAL));
-		return NULL;
+		return;
 	}
 
 	/* Allocate temporary buffer. */
@@ -546,7 +561,7 @@ ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	if (buf == NULL) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    ENOMEM, "%s", strerror(ENOMEM));
-		return NULL;
+		return;
 	}
 	memset(buf, 0, len);
 
@@ -565,42 +580,39 @@ ALSACtlElem *alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	if (err < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
-		return NULL;
+		return;
 	}
 
-	elems = add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info.id,
-			      exception);
-	if (*exception != NULL)
-		return NULL;
-
-	return elems;
+	add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info.id, number, elems,
+		  exception);
 }
 
 /**
  * alsactl_client_add_byte_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
+ * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @count: the number of values in each element
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElem *alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
-					   const gchar *name, guint count,
-					   GError **exception)
+void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
+				   guint number, const gchar *name,
+				   guint count, GArray *elems,
+				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, name, count, exception);
+	init_info(&info, iface, number, name, count, exception);
 	if (*exception != NULL)
-		return NULL;
+		return;
 
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_BYTES;
@@ -609,42 +621,38 @@ ALSACtlElem *alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
-		return NULL;
+		return;
 	}
 
-	elems = add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info.id,
-			      exception);
-	if (*exception != NULL)
-		return NULL;
-
-	return elems;
+	add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info.id, number, elems,
+		  exception);
 }
 
 /**
  * alsactl_client_add_iec60958_elems:
  * @self: A #ALSACtlClient
  * @iface: the type of interface
+ * @number: the number of elements added by this operation
  * @name: the name of new elements
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
- * Returns: (transfer full): A #ALSACtlElem
  */
-ALSACtlElem *alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
-					       const gchar *name,
-					       GError **exception)
+void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
+				       guint number, const gchar *name,
+				       GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	GType type;
-	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_info info = {0};
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, name, 1, exception);
+	init_info(&info, iface, number, name, 1, exception);
 	if (*exception != NULL)
-		return NULL;
+		return;
 
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_IEC958;
@@ -653,15 +661,11 @@ ALSACtlElem *alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
-		return NULL;
+		return;
 	}
 
-	elems = add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info.id,
-			      exception);
-	if (*exception != NULL)
-		return NULL;
-
-	return elems;
+	add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info.id, number, elems,
+		  exception);
 }
 
 void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elems,

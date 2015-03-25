@@ -40,53 +40,58 @@ except Exception as e:
 # Add my int elements
 name = 'int-element-{0}'.format(time.strftime('%S'))
 try:
-    element = client.add_int_elems(2, name, 10, 0, 10, 1)
-    element.unlock()
+    elems = client.add_int_elems(2, 2, name, 10, 0, 10, 1)
+    for elem in elems:
+        elem.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elements.append(element)
+elements.extend(elems)
 
 # Add my bool elements
 name = 'bool-element-{0}'.format(time.strftime('%S'))
 try:
-    element = client.add_bool_elems(2, name, 8)
-    element.unlock()
+    elems = client.add_bool_elems(2, 3, name, 8)
+    for elem in elems:
+        elem.unlock()
 except Exception as e:
     print(e)
     sys.exit()
-elements.append(element)
+elements.extend(elems)
 
 # Add my enum elements
 name = 'enum-element-{0}'.format(time.strftime('%S'))
 labels = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
 try:
-    element = client.add_enum_elems(2, name, 6, labels)
-    element.unlock()
+    elems = client.add_enum_elems(2, 4, name, 6, labels)
+    for elem in elems:
+        elem.unlock()
+    elements.extend(elems)
 except Exception as e:
     print(e)
     sys.exit()
-elements.append(element)
 
 # Add my byte elements
 name = 'byte-element-{0}'.format(time.strftime('%S'))
 try:
-    element = client.add_byte_elems(2, name, 4)
-    element.unlock()
+    elems = client.add_byte_elems(2, 5, name, 4)
+    for elem in elems:
+        elem.unlock()
+    elements.extend(elems)
 except Exception as e:
     print(e)
     sys.exit()
-elements.append(element)
 
 # Add my iec60958 elements
 name = 'iec60958-element-{0}'.format(time.strftime('%S'))
 try:
-    element = client.add_iec60958_elems(2, name)
-    element.unlock()
+    elems = client.add_iec60958_elems(2, 6, name)
+    for elem in elems:
+        elem.unlock()
+    elements.extend(elems)
 except Exception as e:
     print(e)
     sys.exit()
-elements.append(element)
 
 # Get current element list
 try:
@@ -112,11 +117,11 @@ for i in element_list:
 
 # Assign GObject signal handlers
 def handle_changed_event(elem):
-    print('  changed: {0}'.format(elem.get_property('name')));
+    print('  changed: {0}'.format(elem.get_property('id')));
 def handle_updated_event(elem, index):
-    print('  updated: {0}'.format(elem.get_property('name')));
+    print('  updated: {0}'.format(elem.get_property('id')));
 def handle_removed_event(elem):
-    print('  removed: {0}',format(elem.get_property('name')));
+    print('  removed: {0}',format(elem.get_property('id')));
 for e in elements:
     e.connect('changed', handle_changed_event)
     e.connect('updated', handle_updated_event)
