@@ -68,6 +68,16 @@ except Exception as e:
     sys.exit()
 elemsets.append(elemset)
 
+# Add my byte element set
+name = 'byte-elemset-{0}'.format(time.strftime('%S'))
+try:
+    elemset = client.add_elemset_byte(2, name, 4)
+    elemset.unlock()
+except Exception as e:
+    print(e)
+    sys.exit()
+elemsets.append(elemset)
+
 # Add my iec60958 element set
 name = 'iec60958-elemset-{0}'.format(time.strftime('%S'))
 try:

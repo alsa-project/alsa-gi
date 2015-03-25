@@ -73,6 +73,9 @@ ALSACtlElemset *alsactl_client_add_elemset_enum(ALSACtlClient *self, gint iface,
 						const gchar *name, guint count,
 						GArray *labels,
 						GError **exception);
+ALSACtlElemset *alsactl_client_add_elemset_byte(ALSACtlClient *self, gint iface,
+						const gchar *name, guint count,
+						GError **exception);
 ALSACtlElemset *alsactl_client_add_elemset_iec60958(ALSACtlClient *self,
 						    gint iface,
 						    const gchar *name,
