@@ -73,7 +73,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   GError **exception);
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
-				   guint count, GArray *labels,
+				   guint count, GArray *items,
 				   GArray *elems, GError **exception);
 void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,

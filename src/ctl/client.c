@@ -508,7 +508,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @count: the number of values in each element
- * @labels: (element-type utf8): (array) (in): string labels for each items
+ * @items: (element-type utf8): (array) (in): string items for each items
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
@@ -516,7 +516,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  */
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
-				   guint count, GArray *labels,
+				   guint count, GArray *items,
 				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -536,12 +536,12 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 
 	/* Type-specific information. */
 	info.type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
-	info.value.enumerated.items = labels->len;
+	info.value.enumerated.items = items->len;
 
-	/* Calcurate total length of labels. */
+	/* Calcurate total length of items. */
 	len = 0;
-	for (i = 0; i < labels->len; i++)
-		len += strlen(g_array_index(labels, gchar *, i)) + 1;
+	for (i = 0; i < items->len; i++)
+		len += strlen(g_array_index(items, gchar *, i)) + 1;
 	if (len == 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    EINVAL, "%s", strerror(EINVAL));
@@ -557,11 +557,11 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	}
 	memset(buf, 0, len);
 
-	/* Copy labels. */
+	/* Copy items. */
 	info.value.enumerated.names_ptr = (uintptr_t)buf;
 	info.value.enumerated.names_length = len;
-	for (i = 0; i < labels->len; i++) {
-		label = g_array_index(labels, gchar *, i);
+	for (i = 0; i < items->len; i++) {
+		label = g_array_index(items, gchar *, i);
 		memcpy(buf, label, strlen(label));
 		buf += strlen(label) + 1;
 	}

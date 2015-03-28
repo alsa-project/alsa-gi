@@ -67,12 +67,12 @@ elements.extend(elems)
 
 # Add my enum elements
 name = 'enum-element-{0}'.format(time.strftime('%S'))
-labels = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
+items = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
 try:
-    elems = client.add_enum_elems(2, 4, name, 6, labels)
+    elems = client.add_enum_elems(2, 4, name, 6, items)
     for elem in elems:
         elem.unlock()
-        print(elem.get_labels())
+        print(elem.get_items())
         vals = elem.read()
         print(vals)
         elem.write(vals)

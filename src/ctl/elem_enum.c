@@ -79,11 +79,11 @@ static void update_items(ALSACtlElemEnum *self, GError **exception)
 /**
  * alsactl_elem_enum_get_items:
  * @self: A #ALSACtlElemEnum
- * @labels: (element-type utf8) (out caller-allocates) (transfer container): a strings array
+ * @items: (element-type utf8) (out caller-allocates) (transfer container): a strings array
  * @exception: A #GError
  *
  */
-void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *labels,
+void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
 				 GError **exception)
 {
 	ALSACtlElemEnumPrivate *priv;
@@ -101,7 +101,7 @@ void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *labels,
 		string = strings[i];
 
 		/* The type of last parameter is important. */
-		g_array_insert_val(labels, i, string);
+		g_array_insert_val(items, i, string);
 	}
 }
 

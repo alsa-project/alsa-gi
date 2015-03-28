@@ -46,7 +46,7 @@ struct _ALSACtlElemEnumClass {
 
 GType alsactl_elem_enum_get_type(void) G_GNUC_CONST;
 
-void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *labels,
+void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
 				 GError **exception);
 
 void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
