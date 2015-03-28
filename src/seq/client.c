@@ -512,7 +512,6 @@ void alsaseq_client_listen(ALSASeqClient *self, GError **exception)
 		.finalize	= finalize_src,
 	};
 	GSource *src;
-	GMainContext *ctx;
 
 	/* Create a source. */
 	src = g_source_new(&funcs, sizeof(SeqClientSource));

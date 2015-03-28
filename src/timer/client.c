@@ -69,14 +69,14 @@ static void timer_client_get_property(GObject *obj, guint id,
 				      GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(obj);
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	switch (id) {
 	case TIMER_CLIENT_PROP_ID:
-		g_value_set_string(val, priv->info.id);
+		g_value_set_string(val, (char *)priv->info.id);
 		break;
 	case TIMER_CLIENT_PROP_NAME:
-		g_value_set_string(val, priv->info.name);
+		g_value_set_string(val, (char *)priv->info.name);
 		break;
 	case TIMER_CLIENT_PROP_IS_SLAVE:
 		g_value_set_boolean(val,
@@ -119,7 +119,7 @@ static void timer_client_set_property(GObject *obj, guint id,
 				      const GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(obj);
+	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	switch(id) {
 	case TIMER_CLIENT_PROP_AUTO_START:
@@ -327,7 +327,7 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
 {
 	ALSATimerClientPrivate *priv;
 	struct snd_timer_id id = {0};
-	struct snd_timer_ginfo info ={0};
+	struct snd_timer_ginfo info ={{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
@@ -341,7 +341,6 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
 		info.tid = id;
 		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_GINFO, &info) < 0)
 			goto error;
-		printf("%s: %s\n", info.id, info.name);
 	}
 
 	return;
@@ -367,7 +366,7 @@ void alsatimer_client_select_timer(ALSATimerClient *self,
 				   GError **exception)
 {
 	ALSATimerClientPrivate *priv;
-	struct snd_timer_select target = {0};
+	struct snd_timer_select target = {{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
@@ -408,8 +407,7 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 				 GError **exception)
 {
 	ALSATimerClientPrivate *priv;
-	struct snd_timer_status s = {0};
-	int err;
+	struct snd_timer_status s = {{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
 	priv = TIMER_CLIENT_GET_PRIVATE(self);

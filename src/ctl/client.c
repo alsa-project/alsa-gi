@@ -56,8 +56,6 @@ static guint ctl_client_sigs[CTL_CLIENT_SIG_COUNT] = { 0 };
 static void ctl_client_get_property(GObject *obj, guint id,
 				    GValue *val, GParamSpec *spec)
 {
-	ALSACtlClient *self = ALSACTL_CLIENT(obj);
-	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
 
 	switch (id) {
 	case CTL_CLIENT_PROP_NAME:
@@ -162,8 +160,7 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 static int allocate_elem_ids(ALSACtlClientPrivate *priv,
 			     struct snd_ctl_elem_list *list)
 {
-	unsigned int i, count;
-	int err;
+	unsigned int count;
 
 	/* Help for deallocation. */
 	memset(list, 0, sizeof(struct snd_ctl_elem_list));
@@ -274,7 +271,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	ALSACtlElem *elems = NULL;
 	struct snd_ctl_elem_list elem_list;
 	struct snd_ctl_elem_id *id;
-	struct snd_ctl_elem_info info = {0};
+	struct snd_ctl_elem_info info = {{0}};
 	unsigned int i, count;
 	int err;
 
@@ -334,8 +331,8 @@ end:
 	return elems;
 }
 
-static int init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
-		     const gchar *name, guint count, GError **exception)
+static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
+		      const gchar *name, guint count, GError **exception)
 {
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
@@ -354,7 +351,7 @@ static int init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
 			    EINVAL, "%s", strerror(EINVAL));
 		return;
 	}
-	strcpy(info->id.name, name);
+	strcpy((char *)info->id.name, name);
 
 	info->access = SNDRV_CTL_ELEM_ACCESS_USER |
 		       SNDRV_CTL_ELEM_ACCESS_READ |
@@ -367,7 +364,7 @@ static void add_elems(ALSACtlClient *self, GType type,
 		      GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
-	struct snd_ctl_elem_info info = {0};
+	struct snd_ctl_elem_info info = {{0}};
 	ALSACtlElem *elem;
 	unsigned int i;
 
@@ -430,9 +427,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 				  GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	GType type;
-	struct snd_ctl_elem_info info = {0};
-	int err;
+	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
@@ -483,9 +478,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	GType type;
-	struct snd_ctl_elem_info info = {0};
-	int err;
+	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
@@ -527,8 +520,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	GType type;
-	struct snd_ctl_elem_info info = {0};
+	struct snd_ctl_elem_info info = {{0}};
 	unsigned int i;
 	unsigned int len;
 	char *buf;
@@ -604,8 +596,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	GType type;
-	struct snd_ctl_elem_info info = {0};
+	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
@@ -643,9 +634,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 				       GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
-	GType type;
-	struct snd_ctl_elem_info info = {0};
-	int err;
+	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
@@ -673,7 +662,6 @@ void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elems,
 {
 	ALSACtlClientPrivate *priv;
 	GList *entry;
-	ALSACtlElem *e;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
@@ -707,8 +695,6 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 
 	GValue val = G_VALUE_INIT;
 	unsigned int numid;
-
-	int err;
 
 	/* A new element is added. */
 	if (event & SNDRV_CTL_EVENT_MASK_ADD) {
@@ -766,17 +752,17 @@ static gboolean check_src(GSource *gsrc)
 
 	condition = g_source_query_unix_fd(gsrc, src->tag);
 	if (!(condition & G_IO_IN))
-		return;
+		goto end;
 
 	if (!ALSACTL_IS_CLIENT(client))
-		return;
+		goto end;
 	priv = CTL_CLIENT_GET_PRIVATE(client);
 
 	/* To save stack usage. */
 	len = read(priv->fd, &priv->event, sizeof(struct snd_ctl_event));
 	if ((len < 0) || (len != sizeof(struct snd_ctl_event))) {
 		/* Read error but ignore it. */
-		return;
+		goto end;
 	}
 
 	/* NOTE: currently ALSA middleware supports 'elem' event only. */
@@ -788,7 +774,7 @@ static gboolean check_src(GSource *gsrc)
 	default:
 		break;
 	}
-
+end:
 	/* Don't go to dispatch, then continue to process this source. */
 	return FALSE;
 }

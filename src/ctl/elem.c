@@ -65,7 +65,7 @@ static void ctl_elem_get_property(GObject *obj, guint id,
 		g_value_set_uint(val, priv->info.count);
 		break;
 	case CTL_ELEM_PROP_NAME:
-		g_value_set_string(val, priv->info.id.name);
+		g_value_set_string(val, (char *)priv->info.id.name);
 		break;
 	case CTL_ELEM_PROP_ID:
 		g_value_set_uint(val, priv->info.id.numid);
@@ -125,8 +125,8 @@ static void ctl_elem_set_property(GObject *obj, guint id,
 		priv->fd = g_value_get_int(val);
 		break;
 	case CTL_ELEM_PROP_NAME:
-		strncpy(priv->info.id.name, g_value_get_string(val),
-						sizeof(priv->info.id.name));
+		strncpy((char *)priv->info.id.name, g_value_get_string(val),
+			sizeof(priv->info.id.name));
 		break;
 	case CTL_ELEM_PROP_ID:
 		priv->info.id.numid = g_value_get_uint(val);
@@ -317,7 +317,6 @@ void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
 	unsigned int numid;
-	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = CTL_ELEM_GET_PRIVATE(self);
@@ -342,7 +341,6 @@ void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
 	struct snd_ctl_elem_id *id;
-	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = CTL_ELEM_GET_PRIVATE(self);
@@ -360,7 +358,6 @@ void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
 	struct snd_ctl_elem_id *id;
-	int err;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = CTL_ELEM_GET_PRIVATE(self);

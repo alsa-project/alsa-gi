@@ -309,7 +309,7 @@ ALSASeqPort *alsaseq_port_new(ALSASeqClient *client, const gchar *name,
 	self = g_object_new(ALSASEQ_TYPE_PORT, NULL);
 	if (self == NULL) {
 		snd_seq_delete_port(client->handle,
-				    snd_seq_port_info_get_port(priv->info));
+				    snd_seq_port_info_get_port(info));
 		err = -ENOMEM;
 		goto error;
 	}

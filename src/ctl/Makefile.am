@@ -7,7 +7,8 @@ AM_CPPFLAGS =					\
 
 AM_CFLAGS =					\
 	$(GLIB_CFLAGS)				\
-	$(GIO_CFLAGS)
+	$(GIO_CFLAGS)				\
+	-Wall
 
 lib_LTLIBRARIES =				\
 	libalsactl.la
