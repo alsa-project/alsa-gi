@@ -32,9 +32,12 @@ G_BEGIN_DECLS
 
 typedef struct _ALSACtlElemEnum		ALSACtlElemEnum;
 typedef struct _ALSACtlElemEnumClass	ALSACtlElemEnumClass;
+typedef struct _ALSACtlElemEnumPrivate	ALSACtlElemEnumPrivate;
 
 struct _ALSACtlElemEnum {
 	ALSACtlElem parent_instance;
+
+	ALSACtlElemEnumPrivate *priv;
 };
 
 struct _ALSACtlElemEnumClass {
@@ -43,4 +46,11 @@ struct _ALSACtlElemEnumClass {
 
 GType alsactl_elem_enum_get_type(void) G_GNUC_CONST;
 
+void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *labels,
+				 GError **exception);
+
+void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
+			    GError **exception);
+void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
+			     GError **exception);
 #endif

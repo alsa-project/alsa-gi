@@ -19,7 +19,7 @@ elements = []
 # Create client nad open
 client = ALSACtl.Client()
 try:
-    client.open('/dev/snd/controlC0')
+    client.open('/dev/snd/controlC1')
 except Exception as e:
     print(e)
     sys.exit()
@@ -42,6 +42,9 @@ name = 'int-element-{0}'.format(time.strftime('%S'))
 try:
     elems = client.add_int_elems(2, 2, name, 10, 0, 10, 1)
     for elem in elems:
+        vals = elem.read()
+        print(vals)
+        elem.write(vals)
         elem.unlock()
 except Exception as e:
     print(e)
@@ -53,6 +56,9 @@ name = 'bool-element-{0}'.format(time.strftime('%S'))
 try:
     elems = client.add_bool_elems(2, 3, name, 8)
     for elem in elems:
+        vals = elem.read()
+        print(vals)
+        elem.write(vals)
         elem.unlock()
 except Exception as e:
     print(e)
@@ -66,6 +72,10 @@ try:
     elems = client.add_enum_elems(2, 4, name, 6, labels)
     for elem in elems:
         elem.unlock()
+        print(elem.get_labels())
+        vals = elem.read()
+        print(vals)
+        elem.write(vals)
     elements.extend(elems)
 except Exception as e:
     print(e)
@@ -76,6 +86,9 @@ name = 'byte-element-{0}'.format(time.strftime('%S'))
 try:
     elems = client.add_byte_elems(2, 5, name, 4)
     for elem in elems:
+        vals = elem.read()
+        print(vals)
+        elem.write(vals)
         elem.unlock()
     elements.extend(elems)
 except Exception as e:

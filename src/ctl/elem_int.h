@@ -43,4 +43,8 @@ struct _ALSACtlElemIntClass {
 
 GType alsactl_elem_int_get_type(void) G_GNUC_CONST;
 
+void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
+			    GError **exception);
+void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
+			     GError **exception);
 #endif

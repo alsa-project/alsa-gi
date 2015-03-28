@@ -35,3 +35,82 @@ static void alsactl_elem_byte_init(ALSACtlElemByte *self)
 {
 	return;
 }
+
+/**
+ * alsactl_elem_byte_read:
+ * @self: A #ALSACtlElemByte
+ * @values: (element-type guint8) (array) (out caller-allocates): a 8bit array
+ * @exception: A #GError
+ *
+ */
+void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
+			    GError **exception)
+{
+	struct snd_ctl_elem_value elem_val = {{0}};
+	unsigned char *vals = elem_val.value.bytes.data;
+
+	GValue tmp = G_VALUE_INIT;
+	unsigned int count;
+	unsigned int i;
+
+	g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
+
+	if ((values == NULL) ||
+	    (g_array_get_element_size(values) != sizeof(guint8))) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return;
+	}
+
+	/* ioctl(2) */
+	if (*exception != NULL)
+		return;
+
+	/* Check the number of values in this element. */
+	g_value_init(&tmp, G_TYPE_UINT);
+	g_object_get_property(G_OBJECT(self), "count", &tmp);
+	count = g_value_get_uint(&tmp);
+
+	/* Copy for application. */
+	for (i = 0; i < count; i++)
+		g_array_insert_val(values, i, vals[i]);
+}
+
+/**
+ * alsactl_elem_byte_write:
+ * @self: A #ALSACtlElemByte
+ * @values: (element-type guint8) (array) (in): a 8bit array
+ * @exception: A #GError
+ *
+ */
+void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,
+			     GError **exception)
+{
+	struct snd_ctl_elem_value elem_val = {{0}};
+	unsigned char *vals = elem_val.value.bytes.data;
+
+	GValue tmp = G_VALUE_INIT;
+	unsigned int count;
+	unsigned int i;
+
+	g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
+
+	if ((values == NULL) ||
+	    (g_array_get_element_size(values) != sizeof(guint8)) ||
+	    values->len == 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    EINVAL, "%s", strerror(EINVAL));
+		return;
+	}
+
+	/* Calculate the number of values in this element. */
+	g_value_init(&tmp, G_TYPE_UINT);
+	g_object_get_property(G_OBJECT(self), "count", &tmp);
+	count = MIN(values->len, g_value_get_uint(&tmp));
+
+	/* Copy for driver. */
+	for (i = 0; i < count; i++)
+		vals[i] = g_array_index(values, guint8, i);
+
+	/* ioctl(2) */
+}
