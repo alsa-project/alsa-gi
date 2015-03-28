@@ -36,6 +36,39 @@ static void alsactl_elem_int_init(ALSACtlElemInt *self)
 	return;
 }
 
+/**
+ * alsactl_elem_int_get_max:
+ * @self: A #ALSACtlElemInt
+ * @max: (out caller-allocates): the maximum number for each value
+ *
+ */
+void alsactl_elem_int_get_max(ALSACtlElemInt *self, unsigned int *max)
+{
+	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+}
+
+/**
+ * alsactl_elem_int_get_min:
+ * @self: A #ALSACtlElemInt
+ * @min: (out caller-allocates): the maximum number for each value
+ *
+ */
+void alsactl_elem_int_get_min(ALSACtlElemInt *self, unsigned int *min)
+{
+	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+}
+
+/**
+ * alsactl_elem_int_get_step:
+ * @self: A #ALSACtlElemInt
+ * @step: (out caller-allocates): the maximum number for each value
+ *
+ */
+void alsactl_elem_int_get_step(ALSACtlElemInt *self, unsigned int *step)
+{
+	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+}
+
 static void fill_as_uint32(GArray *values, unsigned int count,
 			   struct snd_ctl_elem_value *elem_val)
 {
