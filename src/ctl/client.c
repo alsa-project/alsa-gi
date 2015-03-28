@@ -268,7 +268,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 		[SNDRV_CTL_ELEM_TYPE_INTEGER64] = ALSACTL_TYPE_ELEM_INT,
 	};
 	ALSACtlClientPrivate *priv;
-	ALSACtlElem *elems = NULL;
+	ALSACtlElem *elem = NULL;
 	struct snd_ctl_elem_list elem_list;
 	struct snd_ctl_elem_id *id;
 	struct snd_ctl_elem_info info = {{0}};
@@ -303,32 +303,32 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	}
 
 	/* Keep the new instance for this element. */
-	elems = g_object_new(types[info.type],
-			     "fd", priv->fd,
-			     "id", id->numid,
-			     "iface", id->iface,
-			     "device", id->device,
-			     "subdevice", id->subdevice,
-			     "name", id->name,
-			     NULL);
-	elems->client = g_object_ref(self);
+	elem = g_object_new(types[info.type],
+			    "fd", priv->fd,
+			    "id", id->numid,
+			    "iface", id->iface,
+			    "device", id->device,
+			    "subdevice", id->subdevice,
+			    "name", id->name,
+			    NULL);
+	elem->_client = g_object_ref(self);
 
 	/* Update the element information. */
-	alsactl_elem_update(elems, exception);
+	alsactl_elem_update(elem, exception);
 	if (*exception != NULL) {
-		g_clear_object(&elems);
-		elems = NULL;
+		g_clear_object(&elem);
+		elem = NULL;
 		goto end;
 	}
 
 	/* Insert this element to the list in this client. */
-	insert_to_link_list(self, elems);
+	insert_to_link_list(self, elem);
 end:
 	deallocate_elem_ids(&elem_list);
 	if (err > 0)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    err, "%s", strerror(err));
-	return elems;
+	return elem;
 }
 
 static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
@@ -389,7 +389,7 @@ static void add_elems(ALSACtlClient *self, GType type,
 				    "subdevice", id->subdevice,
 				    "name", id->name,
 				    NULL);
-		elem->client = g_object_ref(self);
+		elem->_client = g_object_ref(self);
 
 		/* Update the element information. */
 		alsactl_elem_update(elem, exception);

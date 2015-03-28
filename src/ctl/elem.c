@@ -162,7 +162,7 @@ static void ctl_elem_dispose(GObject *obj)
 	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
 		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
 
-	alsactl_client_remove_elem(self->client, self, NULL);
+	alsactl_client_remove_elem(self->_client, self, NULL);
 
 	G_OBJECT_CLASS(alsactl_elem_parent_class)->dispose(obj);
 }
@@ -184,9 +184,9 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 	ctl_elem_props[CTL_ELEM_PROP_FD] =
 		g_param_spec_int("fd", "fd",
 			"file descriptor for special file of control device",
-				 INT_MIN, INT_MAX,
-				 -1,
-				 G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+			INT_MIN, INT_MAX,
+			-1,
+			G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 	ctl_elem_props[CTL_ELEM_PROP_TYPE] =
 		g_param_spec_int("type", "type",
 				 "The type of this element",
@@ -324,7 +324,7 @@ void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 	/* The numid is rollback to a numid of the first element in this set. */
 	numid = priv->info.id.numid;
 
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
+	if (ioctl(self->_fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 	}
