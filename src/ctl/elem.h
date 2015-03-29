@@ -46,6 +46,8 @@ struct _ALSACtlElem {
 
 struct _ALSACtlElemClass {
 	GObjectClass parent_class;
+
+	void (*update)(ALSACtlElem *self, GError **exception);
 };
 
 GType alsactl_elem_get_type(void) G_GNUC_CONST;
@@ -55,4 +57,9 @@ void alsactl_elem_update(ALSACtlElem *self, GError **exception);
 void alsactl_elem_lock(ALSACtlElem *self, GError **exception);
 void alsactl_elem_unlock(ALSACtlElem *self, GError **exception);
 
+void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
+			      struct snd_ctl_elem_value *elem_val,
+			      GError **exception);
+void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
+			     GError **exception);
 #endif

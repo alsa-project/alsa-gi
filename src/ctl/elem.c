@@ -172,9 +172,21 @@ static void ctl_elem_finalize(GObject *gobject)
 	G_OBJECT_CLASS(alsactl_elem_parent_class)->finalize(gobject);
 }
 
+static void elem_update(ALSACtlElem *self, GError **exception)
+{
+	struct snd_ctl_elem_info info = {{0}};
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+
+	alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
+}
+
 static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	/* Set default method. */
+	klass->update = elem_update;
 
 	gobject_class->get_property = ctl_elem_get_property;
 	gobject_class->set_property = ctl_elem_set_property;
@@ -315,26 +327,7 @@ static void alsactl_elem_init(ALSACtlElem *self)
 
 void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 {
-	ALSACtlElemPrivate *priv;
-	unsigned int numid;
-
-	g_return_if_fail(ALSACTL_IS_ELEM(self));
-	priv = CTL_ELEM_GET_PRIVATE(self);
-
-	/* The numid is rollback to a numid of the first element in this set. */
-	numid = priv->info.id.numid;
-
-	if (ioctl(self->_fd, SNDRV_CTL_IOCTL_ELEM_INFO, &priv->info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
-
-	/* Restore the numid, how ugly design this interface is... */
-	/*
-	 * TODO: upstream should fix this bug. numid or index should be
-	 * correct.
-	 */
-	priv->info.id.numid = numid;
+	ALSACTL_ELEM_GET_CLASS(self)->update(self, exception);
 }
 
 void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
@@ -369,4 +362,48 @@ void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
 	}
+}
+
+void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
+			      struct snd_ctl_elem_value *elem_val,
+			      GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = CTL_ELEM_GET_PRIVATE(self);
+
+	elem_val->id.numid = priv->info.id.numid;
+	if (ioctl(priv->fd, cmd, elem_val) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+	}
+}
+
+void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
+			     GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = CTL_ELEM_GET_PRIVATE(self);
+
+	info->id.numid = priv->info.id.numid;
+
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0) {
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
+	}
+
+	/*
+	 * The numid is rollback to a numid of the first element in this set.
+	 * This is a workaround for this ugly design.
+	 *
+	 * TODO: upstream should fix this bug. numid or index should be
+	 * kept as it was.
+	 */
+	info->id.numid = priv->info.id.numid;
+
+	/* Copy updated information. */
+	priv->info = *info;
 }

@@ -11,7 +11,17 @@
 #include <sound/asound.h>
 #include "elem_int.h"
 
-G_DEFINE_TYPE(ALSACtlElemInt, alsactl_elem_int, ALSACTL_TYPE_ELEM)
+struct _ALSACtlElemIntPrivate {
+	guint64 min;
+	guint64 max;
+	guint64 step;
+};
+
+G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemInt, alsactl_elem_int, ALSACTL_TYPE_ELEM)
+#define CTL_ELEM_INT_GET_PRIVATE(obj)					\
+	(G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
+				     ALSACTL_TYPE_ELEM_INT,		\
+				     ALSACtlElemIntPrivate))
 
 static void ctl_elem_int_dispose(GObject *obj)
 {
@@ -23,9 +33,37 @@ static void ctl_elem_int_finalize(GObject *gobject)
 	G_OBJECT_CLASS(alsactl_elem_int_parent_class)->finalize(gobject);
 }
 
+static void elem_int_update(ALSACtlElem *parent, GError **exception)
+{
+	ALSACtlElemInt *self;
+	ALSACtlElemIntPrivate *priv;
+	struct snd_ctl_elem_info info = {{0}};
+
+	g_return_if_fail(ALSACTL_IS_ELEM_INT(parent));
+	self = ALSACTL_ELEM_INT(parent);
+	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+
+	alsactl_elem_info_ioctl(parent, &info, exception);
+	if (*exception != NULL)
+		return;
+
+	if (info.type == SNDRV_CTL_ELEM_TYPE_INTEGER) {
+		priv->min = info.value.integer.min;
+		priv->max = info.value.integer.max;
+		priv->step = info.value.integer.step;
+	} else {
+		priv->min = info.value.integer64.min;
+		priv->max = info.value.integer64.max;
+		priv->step = info.value.integer64.step;
+	}
+}
+
 static void alsactl_elem_int_class_init(ALSACtlElemIntClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	/* Override parent method. */
+	ALSACTL_ELEM_CLASS(klass)->update = elem_int_update;
 
 	gobject_class->dispose = ctl_elem_int_dispose;
 	gobject_class->finalize = ctl_elem_int_finalize;
@@ -33,7 +71,7 @@ static void alsactl_elem_int_class_init(ALSACtlElemIntClass *klass)
 
 static void alsactl_elem_int_init(ALSACtlElemInt *self)
 {
-	return;
+	self->priv = alsactl_elem_int_get_instance_private(self);
 }
 
 /**
@@ -44,7 +82,12 @@ static void alsactl_elem_int_init(ALSACtlElemInt *self)
  */
 void alsactl_elem_int_get_max(ALSACtlElemInt *self, unsigned int *max)
 {
+	ALSACtlElemIntPrivate *priv;
+
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+
+	*max = priv->max;
 }
 
 /**
@@ -55,7 +98,12 @@ void alsactl_elem_int_get_max(ALSACtlElemInt *self, unsigned int *max)
  */
 void alsactl_elem_int_get_min(ALSACtlElemInt *self, unsigned int *min)
 {
+	ALSACtlElemIntPrivate *priv;
+
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+
+	*min = priv->min;
 }
 
 /**
@@ -66,7 +114,12 @@ void alsactl_elem_int_get_min(ALSACtlElemInt *self, unsigned int *min)
  */
 void alsactl_elem_int_get_step(ALSACtlElemInt *self, unsigned int *step)
 {
+	ALSACtlElemIntPrivate *priv;
+
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
+	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+
+	*step = priv->step;
 }
 
 static void fill_as_uint32(GArray *values, unsigned int count,
@@ -113,9 +166,12 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 		return;
 	}
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_READ, &elem_val,
+				 exception);
 	if (*exception != NULL)
 		return;
+
 
 	/* Check the number of values in this element. */
 	g_value_init(&count, G_TYPE_UINT);
@@ -195,5 +251,7 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 	else
 		pull_as_uint64(values, g_value_get_uint(&count), &elem_val);
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_WRITE, &elem_val,
+				 exception);
 }

@@ -32,9 +32,12 @@ G_BEGIN_DECLS
 
 typedef struct _ALSACtlElemInt		ALSACtlElemInt;
 typedef struct _ALSACtlElemIntClass	ALSACtlElemIntClass;
+typedef struct _ALSACtlElemIntPrivate	ALSACtlElemIntPrivate;
 
 struct _ALSACtlElemInt {
 	ALSACtlElem parent_instance;
+
+	ALSACtlElemPrivate *priv;
 };
 
 struct _ALSACtlElemIntClass {

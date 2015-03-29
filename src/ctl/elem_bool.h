@@ -43,6 +43,8 @@ struct _ALSACtlElemBoolClass {
 
 GType alsactl_elem_bool_get_type(void) G_GNUC_CONST;
 
+void alsactl_elem_bool_update(ALSACtlElemBool *self, GError **exception);
+
 void alsactl_elem_bool_read(ALSACtlElemBool *self, GArray *values,
 			    GError **exception);
 void alsactl_elem_bool_write(ALSACtlElemBool *self, GArray *values,

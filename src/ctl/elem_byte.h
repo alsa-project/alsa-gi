@@ -43,6 +43,8 @@ struct _ALSACtlElemByteClass {
 
 GType alsactl_elem_byte_get_type(void) G_GNUC_CONST;
 
+void alsactl_elem_byte_update(ALSACtlElemByte *self, GError **exception);
+
 void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
 			    GError **exception);
 void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,

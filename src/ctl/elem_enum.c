@@ -41,9 +41,44 @@ static void ctl_elem_enum_finalize(GObject *gobject)
 	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->finalize(gobject);
 }
 
+static void elem_enum_update(ALSACtlElem *parent, GError **exception)
+{
+	ALSACtlElemEnum *self;
+	ALSACtlElemEnumPrivate *priv;
+	struct snd_ctl_elem_info info = {{0}};
+	char (*strings)[CHARS_PER_LABEL];
+	unsigned int i;
+
+	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(parent));
+	self = ALSACTL_ELEM_ENUM(parent);
+	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	strings = priv->strings;
+
+	/* Get the count of items. */
+	alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
+	if (*exception != NULL)
+		return;
+	priv->item_count = info.value.enumerated.items;
+
+	/* Set the name of each item. */
+	for (i = 0; i < priv->item_count; i++) {
+		info.value.enumerated.item = i;
+
+		alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info,
+					exception);
+		if (*exception != NULL)
+			return;
+
+		strcpy(strings[i], info.value.enumerated.name);
+	}
+}
+
 static void alsactl_elem_enum_class_init(ALSACtlElemEnumClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	/* Override parent method. */
+	ALSACTL_ELEM_CLASS(klass)->update = elem_enum_update;
 	
 	gobject_class->dispose = ctl_elem_enum_dispose;
 	gobject_class->finalize = ctl_elem_enum_finalize;
@@ -55,25 +90,10 @@ static void alsactl_elem_enum_init(ALSACtlElemEnum *self)
 
 	/*
 	 * The maximum length of each item is 64 characters.
-	 * The maximum number of items is 1024 entries.
+	 * The maximum number of items in one element is 1024 entries.
 	 */
 	self->priv->strings = (char (*)[CHARS_PER_LABEL])
 			g_slice_alloc0(CHARS_PER_LABEL * LABELS_PER_ELEM);
-}
-
-static void update_items(ALSACtlElemEnum *self, GError **exception)
-{
-	ALSACtlElemEnumPrivate *priv;
-	char (*strings)[CHARS_PER_LABEL];
-	unsigned int i;
-
-	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
-	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
-	strings = priv->strings;
-	priv->item_count = 10;
-	
-	for (i = 0; i < priv->item_count; i++)
-		strcpy(strings[i], "oneiric");
 }
 
 /**
@@ -94,8 +114,6 @@ void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
 	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
 	strings = priv->strings;
-
-	update_items(self, exception);
 
 	for (i = 0; i < priv->item_count; i++) {
 		string = strings[i];
@@ -148,7 +166,9 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 		return;
 	}
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_READ, &elem_val,
+				 exception);
 	if (*exception != NULL)
 		return;
 
@@ -218,5 +238,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 	pull_as_string(&elem_val, count, priv->strings, priv->item_count,
 		       values);
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_WRITE, &elem_val,
+				 exception);
 }

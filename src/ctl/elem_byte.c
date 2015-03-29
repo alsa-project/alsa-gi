@@ -62,7 +62,9 @@ void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
 		return;
 	}
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_READ, &elem_val,
+				 exception);
 	if (*exception != NULL)
 		return;
 
@@ -112,5 +114,7 @@ void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,
 	for (i = 0; i < count; i++)
 		vals[i] = g_array_index(values, guint8, i);
 
-	/* ioctl(2) */
+	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
+				 SNDRV_CTL_IOCTL_ELEM_WRITE, &elem_val,
+				 exception);
 }

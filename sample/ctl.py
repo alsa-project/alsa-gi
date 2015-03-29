@@ -42,6 +42,9 @@ name = 'int-element-{0}'.format(time.strftime('%S'))
 try:
     elems = client.add_int_elems(2, 2, name, 10, 0, 10, 1)
     for elem in elems:
+        print(elem.get_min())
+        print(elem.get_max())
+        print(elem.get_step())
         vals = elem.read()
         print(vals)
         elem.write(vals)
@@ -131,6 +134,7 @@ for i in element_list:
 # Assign GObject signal handlers
 def handle_changed_event(elem):
     print('  changed: {0}'.format(elem.get_property('id')));
+    print(elem.read())
 def handle_updated_event(elem, index):
     print('  updated: {0}'.format(elem.get_property('id')));
 def handle_removed_event(elem):
