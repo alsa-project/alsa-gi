@@ -162,7 +162,7 @@ static void ctl_elem_dispose(GObject *obj)
 	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
 		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
 
-	alsactl_client_remove_elem(self->_client, self, NULL);
+	alsactl_client_remove_elem(self->_client, self);
 
 	G_OBJECT_CLASS(alsactl_elem_parent_class)->dispose(obj);
 }

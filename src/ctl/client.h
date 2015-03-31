@@ -82,6 +82,5 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 				       guint number, const gchar *name,
 				       GArray *elems, GError **exception);
-void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem,
-				GError **exception);
+void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem);
 #endif

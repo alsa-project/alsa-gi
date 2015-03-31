@@ -657,8 +657,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 		  exception);
 }
 
-void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elems,
-				GError **exception)
+void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem)
 {
 	ALSACtlClientPrivate *priv;
 	GList *entry;
@@ -668,11 +667,11 @@ void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elems,
 
 	g_mutex_lock(&priv->lock);
 	for (entry = priv->elems; entry != NULL; entry = entry->next) {
-		if (entry->data != elems)
+		if (entry->data != elem)
 			continue;
 
 		priv->elems = g_list_delete_link(priv->elems, entry);
-		g_object_unref(self);
+		g_object_unref(elem->_client);
 	}
 	g_mutex_unlock(&priv->lock);
 }

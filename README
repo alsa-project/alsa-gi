@@ -19,11 +19,11 @@ How to test:
  $ ./autogen.sh
  $ ./configure
  $ make
- $ ./sample/run.sh [seq|timer]
+ $ ./sample/run.sh [ctl|timer|seq]
  (PyGObject is required.)
 
 Current status:
  Under development.
- - Partly support for Card interface
+ - Partly support for Control interface
  - Partly support for Timer interface
  - Partly support for Sequencer interface
