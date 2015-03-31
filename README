@@ -2,7 +2,6 @@ GObject introspection library for ALSA userspace library
 
 Requirements:
 - Linux with ALSA
-- alsa-lib
 - autoconf
 - automake
 - glib-2.0

@@ -9,7 +9,7 @@ export GI_TYPELIB_PATH=src/timer/:src/seq/:src/ctl/:/usr/lib/girepository-1.0
 if [[ $1 == 'timer' ]] ; then
 	./sample/timer.py
 elif [[ $1 == 'seq' ]] ; then
-	./sample/sequencer.py
+	./sample/seq.py
 elif [[ $1 == 'ctl' ]] ; then
 	./sample/ctl.py
 fi

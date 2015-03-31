@@ -1,4 +1,15 @@
-#include <alsa/asoundlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+
+#include <sound/asound.h>
+#include <sound/asequencer.h>
 #include "port.h"
 
 #ifdef HAVE_CONFIG_H
@@ -6,7 +17,8 @@
 #endif
 
 struct _ALSASeqPortPrivate {
-	snd_seq_port_info_t *info;
+	int fd;
+	struct snd_seq_port_info info;
 
 	ALSASeqClient *client;
 };
@@ -17,7 +29,9 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqPort, alsaseq_port, G_TYPE_OBJECT)
 				     ALSASEQ_TYPE_PORT, ALSASeqPortPrivate))
 
 enum seq_port_prop {
-	SEQ_PORT_PROP_ID = 1,
+	SEQ_PORT_PROP_FD = 1,
+	SEQ_PORT_PROP_CLIENT,
+	SEQ_PORT_PROP_ID,
 	SEQ_PORT_PROP_NAME,
 	SEQ_PORT_PROP_TYPE,
 	SEQ_PORT_PROP_CAPABILITY,
@@ -49,60 +63,50 @@ static void seq_port_get_property(GObject *obj, guint id,
 
 	switch (id) {
 	case SEQ_PORT_PROP_ID:
-		g_value_set_int(val,
-				snd_seq_port_info_get_port(priv->info));
+		g_value_set_uint(val, priv->info.addr.port);
 		break;
 	case SEQ_PORT_PROP_NAME:
-		g_value_set_string(val,
-				   snd_seq_port_info_get_name(priv->info));
+		g_value_set_string(val, priv->info.name);
 		break;
 	case SEQ_PORT_PROP_TYPE:
-		g_value_set_uint(val,
-				 snd_seq_port_info_get_type(priv->info));
+		g_value_set_uint(val, priv->info.type);
 		break;
 	case SEQ_PORT_PROP_CAPABILITY:
-		g_value_set_uint(val,
-				 snd_seq_port_info_get_capability(priv->info));
+		g_value_set_uint(val, priv->info.capability);
 		break;
 	case SEQ_PORT_PROP_MIDI_CHANNELS:
-		g_value_set_int(val,
-			snd_seq_port_info_get_midi_channels(priv->info));
+		g_value_set_int(val, priv->info.midi_channels);
 		break;
 	case SEQ_PORT_PROP_MIDI_VOICES:
-		g_value_set_int(val,
-				snd_seq_port_info_get_midi_voices(priv->info));
+		g_value_set_int(val, priv->info.midi_voices);
 		break;
 	case SEQ_PORT_PROP_SYNTH_VOICES:
-		g_value_set_int(val,
-				snd_seq_port_info_get_synth_voices(priv->info));
+		g_value_set_int(val, priv->info.synth_voices);
 		break;
 	case SEQ_PORT_PROP_READ_USE:
-		g_value_set_int(val,
-				snd_seq_port_info_get_read_use(priv->info));
+		g_value_set_int(val, priv->info.read_use);
 		break;
 	case SEQ_PORT_PROP_WRITE_USE:
-		g_value_set_int(val,
-				snd_seq_port_info_get_write_use(priv->info));
+		g_value_set_int(val, priv->info.write_use);
 		break;
 	case SEQ_PORT_PROP_PORT_SPECIFIED:
 		g_value_set_boolean(val,
-			snd_seq_port_info_get_port_specified(priv->info));
+			priv->info.flags & SNDRV_SEQ_PORT_FLG_GIVEN_PORT);
 		break;
 	case SEQ_PORT_PROP_TIMESTAMPING:
 		g_value_set_boolean(val,
-				snd_seq_port_info_get_timestamping(priv->info));
+			priv->info.flags & SNDRV_SEQ_PORT_FLG_TIMESTAMP);
 		break;
 	case SEQ_PORT_PROP_TIMESTAMP_REAL:
 		g_value_set_boolean(val,
-			snd_seq_port_info_get_timestamp_real(priv->info));
+			priv->info.flags & SNDRV_SEQ_PORT_FLG_TIME_REAL);
 		break;
 	case SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID:
-		g_value_set_int(val,
-			snd_seq_port_info_get_timestamp_queue(priv->info));
+		g_value_set_int(val, priv->info.time_queue);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
-		return;
+		break;
 	}
 
 }
@@ -114,70 +118,76 @@ static void seq_port_set_property(GObject *obj, guint id,
 	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
 
 	switch (id) {
-	case SEQ_PORT_PROP_NAME:
-		snd_seq_port_info_set_name(priv->info, g_value_get_string(val));
+	case SEQ_PORT_PROP_FD:
+		priv->fd = g_value_get_int(val);
 		break;
-	case SEQ_PORT_PROP_TYPE:
-		snd_seq_port_info_set_type(priv->info,
-					   g_value_get_uint(val));
-		break;
-	case SEQ_PORT_PROP_CAPABILITY:
-		snd_seq_port_info_set_capability(priv->info,
-						 g_value_get_uint(val));
-		break;
-	case SEQ_PORT_PROP_MIDI_CHANNELS:
-		snd_seq_port_info_set_midi_channels(priv->info,
-						    g_value_get_uint(val));
-		break;
-	case SEQ_PORT_PROP_MIDI_VOICES:
-		snd_seq_port_info_set_midi_voices(priv->info,
-						  g_value_get_uint(val));
-		break;
-	case SEQ_PORT_PROP_SYNTH_VOICES:
-		snd_seq_port_info_set_synth_voices(priv->info,
-						   g_value_get_uint(val));
-		break;
-	case SEQ_PORT_PROP_PORT_SPECIFIED:
-		snd_seq_port_info_set_port_specified(priv->info,
-						g_value_get_boolean(val));
-		break;
-	case SEQ_PORT_PROP_TIMESTAMPING:
-		snd_seq_port_info_set_timestamping(priv->info,
-						   g_value_get_boolean(val));
-		break;
-	case SEQ_PORT_PROP_TIMESTAMP_REAL:
-		snd_seq_port_info_set_timestamp_real(priv->info,
-						     g_value_get_boolean(val));
-		break;
-	case SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID:
-		snd_seq_port_info_set_timestamp_queue(priv->info,
-						      g_value_get_int(val));
+	case SEQ_PORT_PROP_CLIENT:
+		priv->info.addr.client = g_value_get_uint(val);
 		break;
 	case SEQ_PORT_PROP_ID:
-	case SEQ_PORT_PROP_READ_USE:
-	case SEQ_PORT_PROP_WRITE_USE:
+		priv->info.addr.port = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_NAME:
+		strncpy(priv->info.name, g_value_get_string(val),
+			sizeof(priv->info.name));
+		break;
+	case SEQ_PORT_PROP_TYPE:
+		priv->info.type = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_CAPABILITY:
+		priv->info.capability = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_MIDI_CHANNELS:
+		priv->info.midi_channels = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_MIDI_VOICES:
+		priv->info.midi_voices = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_SYNTH_VOICES:
+		priv->info.synth_voices = g_value_get_uint(val);
+		break;
+	case SEQ_PORT_PROP_PORT_SPECIFIED:
+		if (g_value_get_boolean(val))
+			priv->info.flags |= SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
+		else
+			priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
+		break;
+	case SEQ_PORT_PROP_TIMESTAMPING:
+		if (g_value_get_boolean(val))
+			priv->info.flags |= SNDRV_SEQ_PORT_FLG_TIMESTAMP;
+		else
+			priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_TIMESTAMP;
+		break;
+	case SEQ_PORT_PROP_TIMESTAMP_REAL:
+		if (g_value_get_boolean(val))
+			priv->info.flags |= SNDRV_SEQ_PORT_FLG_TIME_REAL;
+		else
+			priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_TIME_REAL;
+		break;
+	case SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID:
+		priv->info.time_queue = g_value_get_int(val);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
 		return;
 	}
 }
 
-static void seq_port_dispose(GObject *gobject)
+static void seq_port_dispose(GObject *obj)
 {
-	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(gobject);
+	ALSASeqPort *self = ALSASEQ_PORT(obj);
+	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
+
+	/* Close this port. */
+	ioctl(priv->fd, SNDRV_SEQ_IOCTL_DELETE_PORT, &priv->info);
+
+	alsaseq_client_close_port(self->_client, self);
+
+	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(obj);
 }
 
 static void seq_port_finalize(GObject *gobject)
 {
-	ALSASeqPort *self = ALSASEQ_PORT(gobject);
-	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
-
-	/* Close this port. */
-	snd_seq_delete_port(priv->client->handle,
-			    snd_seq_port_info_get_port(priv->info));
-	snd_seq_port_info_free(priv->info);
-	g_object_unref(priv->client);
-
 	G_OBJECT_CLASS(alsaseq_port_parent_class)->finalize(gobject);
 }
 
@@ -190,12 +200,24 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 	gobject_class->dispose = seq_port_dispose;
 	gobject_class->finalize = seq_port_finalize;
 
+	seq_port_props[SEQ_PORT_PROP_FD] =
+		g_param_spec_int("fd", "fd",
+			"file descriptor for special file of control device",
+			INT_MIN, INT_MAX,
+			-1,
+			G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+	seq_port_props[SEQ_PORT_PROP_CLIENT] =
+		g_param_spec_uint("client", "client",
+				  "The owner of this port",
+				  0, INT_MAX,
+				  0,
+				  G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 	seq_port_props[SEQ_PORT_PROP_ID] =
-		g_param_spec_int("id", "id",
-				 "The id of this port",
-				 0, INT_MAX,
-				 0,
-				 G_PARAM_READABLE);
+		g_param_spec_uint("id", "id",
+				  "The id of this port",
+				  0, INT_MAX,
+				  0,
+				  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
 	seq_port_props[SEQ_PORT_PROP_NAME] =
 		g_param_spec_string("name", "name",
 				    "a pointer to name",
@@ -284,47 +306,7 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 static void alsaseq_port_init(ALSASeqPort *self)
 {
 	self->priv = alsaseq_port_get_instance_private(self);
-}
-
-ALSASeqPort *alsaseq_port_new(ALSASeqClient *client, const gchar *name,
-			      GError **exception)
-{
-	ALSASeqPort *self;
-	ALSASeqPortPrivate *priv;
-
-	snd_seq_port_info_t *info = NULL;
-
-	int err;
-
-	/* Open new port for this client. */
-	err = snd_seq_port_info_malloc(&info);
-	if (err < 0)
-		goto error;
-	snd_seq_port_info_set_name(info, name);
-
-	err = snd_seq_create_port(client->handle, info);
-	if (err < 0)
-		goto error;
-
-	self = g_object_new(ALSASEQ_TYPE_PORT, NULL);
-	if (self == NULL) {
-		snd_seq_delete_port(client->handle,
-				    snd_seq_port_info_get_port(info));
-		err = -ENOMEM;
-		goto error;
-	}
-	priv = SEQ_PORT_GET_PRIVATE(self);
-
-	priv->info = info;
-	priv->client = g_object_ref(client);
-
-	return self;
-error:
-	if (info != NULL)
-		snd_seq_port_info_free(info);
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    -err, "%s", snd_strerror(err));
-	return NULL;
+	ioctl(self->priv->fd, SNDRV_SEQ_IOCTL_CREATE_PORT, &self->priv->info);
 }
 
 /**
@@ -337,13 +319,13 @@ error:
  */
 void alsaseq_port_update(ALSASeqPort *self, GError **exception)
 {
-	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
-	int err;
+	ALSASeqPortPrivate *priv;
 
-	err = snd_seq_set_port_info(priv->client->handle,
-				    snd_seq_port_info_get_port(priv->info),
-				    priv->info);
-	if (err < 0)
+	g_return_if_fail(ALSASEQ_IS_PORT(self));
+	priv = SEQ_PORT_GET_PRIVATE(self);
+
+	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_PORT_INFO, &priv->info) < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
-			    -err, "%s", snd_strerror(err));
+			    errno, "%s", strerror(errno));
+	}
 }

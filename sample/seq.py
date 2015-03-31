@@ -2,16 +2,24 @@
 
 import sys
 
-#from gi.repository import Gtk
+# ALSASeq-1.0 gir
 from gi.repository import ALSASeq
+
+# For event loop
+from gi.repository import GLib
+
+# For UNIX signal handling
+import signal
+
+client = ALSASeq.Client()
 
 # Test Client object
 print('Test Client object')
 try:
-    client = ALSASeq.Client.new('default', 'sequencer-client')
+    client.open('/dev/snd/seq', "sequencer-client")
 except Exception as e:
     print(e)
-    sys.exit(1)
+    sys.exit()
 
 print(' Name:           {0}'.format(client.get_property('name')))
 print('  id:            {0}'.format(client.get_property('id')))
@@ -27,18 +35,6 @@ print('  broadcast:     {0}'.format(client.get_property('broadcast-filter')))
 print('  error bounce:  {0}'.format(client.get_property('error-bounce')))
 
 
-print(' Buffer:')
-try:
-	obuf = client.get_output_buffer_size()
-	ibuf = client.get_input_buffer_size()
-	client.set_output_buffer_size(20000)
-	client.set_input_buffer_size(20000)
-except Exception as e:
-	print(e)
-	sys.exit()
-print('  size for out:	{0} -> {1}'.format(obuf, client.get_output_buffer_size()))
-print('  size for in:	{0} -> {1}'.format(ibuf, client.get_input_buffer_size()))
-
 try:
     client.update()
 except Exception as e:
@@ -50,7 +46,7 @@ ports = [0] * 3
 # Test Port object
 def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port):
     print(' Event occur:')
-			
+
     print('  type:      {0}'.format(type))
     print('  flags:     {0}'.format(flags))
     print('  tag:       {0}'.format(tag))
@@ -99,8 +95,10 @@ for i in range(len(ports)):
                                     ports[i].get_property('timestamp-queue')))
     print('  read use:      {0}'.format(ports[i].get_property('read-use')))
     print('  write use:     {0}'.format(ports[i].get_property('write-use')))
+    print('')
 
-    print(' Ports in client:{0}'.format(client.get_property('ports')))
+client.update()
+print(' {0} ports in this client.'.format(client.get_property('ports')))
 
 try:
     client.listen()
@@ -108,8 +106,11 @@ except Exception as e:
     print(e)
     sys.exit(1)
 
-# Event loop
-from gi.repository import GLib
+# handle unix signal
+def handle_unix_signal(self):
+    loop.quit()
+GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, \
+                     handle_unix_signal, None)
 
 loop = GLib.MainLoop()
 loop.run()

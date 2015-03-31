@@ -1,6 +1,7 @@
 #ifndef __ALSASEQ_PORT_H__
 #define __ALSASEQ_PORT_H__
 
+#include <glib.h>
 #include <glib-object.h>
 
 #include "client.h"
@@ -34,23 +35,24 @@ typedef struct _ALSASeqPort		ALSASeqPort;
 typedef struct _ALSASeqPortClass	ALSASeqPortClass;
 typedef struct _ALSASeqPortPrivate	ALSASeqPortPrivate;
 
+typedef struct _ALSASeqClient   ALSASeqClient;
 struct _ALSASeqPort
 {
 	GObject parent_instance;
+
+	ALSASeqClient *_client;
 
 	ALSASeqPortPrivate *priv;
 };
 
 struct _ALSASeqPortClass
 {
-    GObjectClass parent_class;
+	GObjectClass parent_class;
 };
 
 GType alsaseq_port_get_type(void) G_GNUC_CONST;
 
 typedef struct _ALSASeqClient	ALSASeqClient;
-ALSASeqPort *alsaseq_port_new(ALSASeqClient *client, const gchar *name,
-			      GError **exception);
 
 void alsaseq_port_update(ALSASeqPort *self, GError **exception);
 #endif
