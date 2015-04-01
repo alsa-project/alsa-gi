@@ -55,6 +55,7 @@ def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port)
     print('  nsec:      {0}'.format(nsec))
     print('  src client:{0}'.format(src_client))
     print('  src port:  {0}'.format(src_port))
+
 print('\nTest Port object')
 for i in range(len(ports)):
     try:
@@ -65,21 +66,9 @@ for i in range(len(ports)):
 
     ports[i].connect('event', handle_event)
 
-    try:
-        ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))
-    except Exception as e:
-        print(e)
-        sys.exit(1)
-    try:
-        ports[i].set_property('capabilities', 0xff)
-    except Exception as e:
-        print(e)
-        sys.exit(1)
-    try:
-        ports[i].update()
-    except Exception as e:
-        print(e)
-        sys.exit(1)
+    ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))
+    ports[i].set_property('capabilities', 0xff)
+    ports[i].update()
 
     print(' Name: {0}'.format(ports[i].get_property('name')))
     print('  id:            {0}'.format(ports[i].get_property('id')))
