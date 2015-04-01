@@ -171,6 +171,7 @@ static void seq_client_finalize(GObject *gobject)
 	ALSASeqClient *self = ALSASEQ_CLIENT(gobject);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
 
+	/* TODO: drop messages in my pool. */
 	close(priv->fd);
 
 	G_OBJECT_CLASS(alsaseq_client_parent_class)->finalize(gobject);
@@ -276,7 +277,7 @@ void alsaseq_client_open(ALSASeqClient *self, gchar *path, const gchar *name,
 	priv = SEQ_CLIENT_GET_PRIVATE(self);
 
 	/* Always open duplex ports. */
-	priv->fd = open(path, O_RDWR);
+	priv->fd = open(path, O_RDWR | O_NONBLOCK);
 	if (priv->fd < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
@@ -360,6 +361,27 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 	}
 }
 
+static ALSASeqPort *add_port(ALSASeqClient *self,
+			     struct snd_seq_port_info *info)
+{
+	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqPort *port;
+
+	port = g_object_new(ALSASEQ_TYPE_PORT,
+			    "fd", priv->fd,
+			    "name", info->name,
+			    "client", info->addr.client,
+			    "id", info->addr.port,
+			    NULL);
+	port->_client = g_object_ref(self);
+
+	g_mutex_lock(&priv->lock);
+	priv->ports = g_list_prepend(priv->ports, port);
+	g_mutex_unlock(&priv->lock);
+
+	return port;
+}
+
 /**
  * alsaseq_client_open_port:
  * @self: A #ALSASeqClient
@@ -372,7 +394,6 @@ ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 				      GError **exception)
 {
 	ALSASeqClientPrivate *priv;
-	ALSASeqPort *port;
 	struct snd_seq_port_info info = {{0}};
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
@@ -387,22 +408,15 @@ ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 		return NULL;
 	}
 
-	port = g_object_new(ALSASEQ_TYPE_PORT,
-			    "fd", priv->fd,
-			    "name", name,
-			    "client", info.addr.client,
-			    "id", info.addr.port,
-			    NULL);
-	port->_client = g_object_ref(self);
-
-	/* TODO: when should we remove this entry? */
-	g_mutex_lock(&priv->lock);
-	priv->ports = g_list_prepend(priv->ports, port);
-	g_mutex_unlock(&priv->lock);
-
-	return port;
+	return add_port(self, &info);
 }
 
+/**
+ * alsaseq_client_close_port:
+ * @self: A #ALSASeqClient
+ * @port: A #ALSASeqPort
+ *
+ */
 void alsaseq_client_close_port(ALSASeqClient *self, ALSASeqPort *port)
 {
 	ALSASeqClientPrivate *priv;
@@ -420,6 +434,39 @@ void alsaseq_client_close_port(ALSASeqClient *self, ALSASeqPort *port)
 		g_object_unref(port->_client);
 	}
 	g_mutex_unlock(&priv->lock);
+}
+
+/**
+ * alsaseq_client_get_ports:
+ * @self: A #ALSASeqClient
+ * @ports: (element-type ALSASeqPort) (array) (out caller-allocates) (transfer container): port array in this client
+ * @exception: A #GError
+ */
+void alsaseq_client_get_ports(ALSASeqClient *self, GArray *ports,
+			      GError **exception)
+{
+	ALSASeqClientPrivate *priv;
+	ALSASeqPort *port;
+	struct snd_seq_port_info info = {{0}};
+
+	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
+	priv = SEQ_CLIENT_GET_PRIVATE(self);
+
+	info.addr.client = priv->info.client;
+	info.addr.port = -1;
+	while (1) {
+		if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_QUERY_NEXT_PORT,
+			  &info) < 0) {
+			if (errno != ENOENT)
+				g_set_error(exception,
+					   g_quark_from_static_string(__func__),
+					    errno, "%s", strerror(errno));
+			break;
+		}
+
+		port = add_port(self, &info);
+		g_array_append_val(ports, port);
+	}
 }
 
 static gboolean prepare_src(GSource *gsrc, gint *timeout)
@@ -445,7 +492,7 @@ static void write_messages(ALSASeqClientPrivate *priv)
 		if (len <= 0)
 			break;
 		priv->writable_bytes -= len;
-	} while (priv->writable_bytes == 0);
+	} while (priv->writable_bytes < BUFFER_SIZE);
 
 	g_mutex_unlock(&priv->write_lock);
 }
@@ -460,12 +507,12 @@ static void read_messages(ALSASeqClientPrivate *priv)
 	GValue val = G_VALUE_INIT;
 
 	g_value_init(&val, G_TYPE_INT);
-	g_mutex_lock(&priv->lock);
-	do {
+	while (1) {
 		len = read(priv->fd, ev, sizeof(struct snd_seq_event));
 		if (len <= 0)
 			break;
 
+		g_mutex_lock(&priv->lock);
 		for (entry = priv->ports; entry != NULL; entry = entry->next) {
 			port = (ALSASeqPort *)entry->data;
 
@@ -480,8 +527,8 @@ static void read_messages(ALSASeqClientPrivate *priv)
 				ev->source.client, ev->source.port,
 				NULL);
 		}
-	} while (1);
-	g_mutex_unlock(&priv->lock);
+		g_mutex_unlock(&priv->lock);
+	}
 }
 
 static gboolean check_src(GSource *gsrc)
@@ -579,6 +626,9 @@ void alsaseq_client_unlisten(ALSASeqClient *self)
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
 	priv = SEQ_CLIENT_GET_PRIVATE(self);
+
+	if (priv->src == NULL)
+		return;
 
 	g_source_destroy((GSource *)priv->src);
 	g_free(priv->src);

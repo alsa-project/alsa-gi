@@ -41,9 +41,25 @@ except Exception as e:
     print(e)
     sys.exit()
 
-ports = [0] * 3
-
 # Test Port object
+print('\nTest Port object')
+
+# Add ports
+my_ports = [0] * 3
+for i in range(len(my_ports)):
+    try:
+        my_ports[i] = client.open_port('client-port:{0}'.format(i + 1))
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+    my_ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))
+    my_ports[i].set_property('capabilities', 0x7f)
+    my_ports[i].update()
+
+client.update()
+print(' {0} ports in this client.'.format(client.get_property('ports')))
+
 def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port):
     print(' Event occur:')
 
@@ -55,39 +71,35 @@ def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port)
     print('  nsec:      {0}'.format(nsec))
     print('  src client:{0}'.format(src_client))
     print('  src port:  {0}'.format(src_port))
+try:
+    ports = client.get_ports()
+except Exception as e:
+    print(e)
+    sys.exit()
 
-print('\nTest Port object')
-for i in range(len(ports)):
+for port in ports:
     try:
-        ports[i] = client.open_port('client-port:{0}'.format(i + 1))
+        port.update()
     except Exception as e:
-        print(e)
-        sys.exit(1)
+        break
 
-    ports[i].connect('event', handle_event)
+    port.connect('event', handle_event)
 
-    ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))
-    ports[i].set_property('capabilities', 0xff)
-    ports[i].update()
-
-    print(' Name: {0}'.format(ports[i].get_property('name')))
-    print('  id:            {0}'.format(ports[i].get_property('id')))
-    print('  type:          0 -> {0}'.format(ports[i].get_property('type')))
-    print('  capabilities:  {0}'.format(ports[i].get_property('capabilities')))
-    print('  midi channels: {0}'.format(ports[i].get_property('midi-channels')))
-    print('  midi voices:   {0}'.format(ports[i].get_property('midi-voices')))
-    print('  synth voices:  {0}'.format(ports[i].get_property('synth-voices')))
+    print(' Name: {0}'.format(port.get_property('name')))
+    print('  id:            {0}'.format(port.get_property('id')))
+    print('  type:          0 -> {0}'.format(port.get_property('type')))
+    print('  capabilities:  {0}'.format(port.get_property('capabilities')))
+    print('  midi channels: {0}'.format(port.get_property('midi-channels')))
+    print('  midi voices:   {0}'.format(port.get_property('midi-voices')))
+    print('  synth voices:  {0}'.format(port.get_property('synth-voices')))
     print('  port specified:{0}'.format(
-                                    ports[i].get_property('port-specified')))
-    print('  timestamping:  {0}'.format(ports[i].get_property('timestamping')))
+                                    port.get_property('port-specified')))
+    print('  timestamping:  {0}'.format(port.get_property('timestamping')))
     print('  timestamp queue: {0}'.format(
-                                    ports[i].get_property('timestamp-queue')))
-    print('  read use:      {0}'.format(ports[i].get_property('read-use')))
-    print('  write use:     {0}'.format(ports[i].get_property('write-use')))
+                                    port.get_property('timestamp-queue')))
+    print('  read use:      {0}'.format(port.get_property('read-use')))
+    print('  write use:     {0}'.format(port.get_property('write-use')))
     print('')
-
-client.update()
-print(' {0} ports in this client.'.format(client.get_property('ports')))
 
 try:
     client.listen()
@@ -96,12 +108,12 @@ except Exception as e:
     sys.exit(1)
 
 # handle unix signal
-def handle_unix_signal(self):
+def handle_unix_signal(loop):
     loop.quit()
-GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, \
-                     handle_unix_signal, None)
-
 loop = GLib.MainLoop()
+GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGINT, \
+                     handle_unix_signal, loop)
 loop.run()
 
 client.unlisten()
+sys.exit()

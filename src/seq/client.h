@@ -59,4 +59,6 @@ typedef struct _ALSASeqPort	ALSASeqPort;
 ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 				      GError **exception);
 void alsaseq_client_close_port(ALSASeqClient *self, ALSASeqPort *port);
+void alsaseq_client_get_ports(ALSASeqClient *self, GArray *ports,
+			      GError **exception);
 #endif

@@ -191,6 +191,25 @@ static void seq_port_finalize(GObject *gobject)
 	G_OBJECT_CLASS(alsaseq_port_parent_class)->finalize(gobject);
 }
 
+/* Require to execute ioctl(2) after parameters are sets. */
+static GObject *seq_port_construct(GType type, guint count,
+				   GObjectConstructParam *props)
+{
+	GObject *obj;
+	ALSASeqPort *self;
+	ALSASeqPortPrivate *priv;
+
+	obj = G_OBJECT_CLASS(alsaseq_port_parent_class)->constructor(type,
+								count, props);
+	self = ALSASEQ_PORT(obj);
+	priv = SEQ_PORT_GET_PRIVATE(self);
+
+	/* Cannot handle this error... */
+	ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_PORT_INFO, &priv->info);
+
+	return obj;
+}
+
 static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -199,6 +218,7 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 	gobject_class->set_property = seq_port_set_property;
 	gobject_class->dispose = seq_port_dispose;
 	gobject_class->finalize = seq_port_finalize;
+	gobject_class->constructor = seq_port_construct;
 
 	seq_port_props[SEQ_PORT_PROP_FD] =
 		g_param_spec_int("fd", "fd",
@@ -306,7 +326,6 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 static void alsaseq_port_init(ALSASeqPort *self)
 {
 	self->priv = alsaseq_port_get_instance_private(self);
-	ioctl(self->priv->fd, SNDRV_SEQ_IOCTL_CREATE_PORT, &self->priv->info);
 }
 
 /**

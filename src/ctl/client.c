@@ -149,7 +149,7 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	priv->fd = open(path, O_RDONLY);
+	priv->fd = open(path, O_RDONLY | O_NONBLOCK);
 	if (priv->fd < 0) {
 		g_set_error(exception, g_quark_from_static_string(__func__),
 			    errno, "%s", strerror(errno));
@@ -416,7 +416,7 @@ static void add_elems(ALSACtlClient *self, GType type,
  * @min: the minimum value for elements in new element
  * @max: the maximum value for elements in new element
  * @step: the step of value for elements in new element
- * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
+ * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): element array added by this operation
  * @exception: A #GError
  *
  */
@@ -796,15 +796,15 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	ALSACtlClientPrivate *priv;
 	GSource *src;
 	int subscribe;
-	int err = 0;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
 	src = g_source_new(&funcs, sizeof(CtlClientSource));
 	if (src == NULL) {
-		err = ENOMEM;
-		goto end;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    ENOMEM, "%s", strerror(ENOMEM));
+		return;
 	}
 
 	g_source_set_name(src, "ALSACtlClient");
@@ -822,13 +822,10 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	/* Be sure to subscribe events. */
 	subscribe = 1;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe) < 0) {
-		err = errno;
+		g_set_error(exception, g_quark_from_static_string(__func__),
+			    errno, "%s", strerror(errno));
 		alsactl_client_unlisten(self);
 	}
-end:
-	if (err > 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    err, "%s", strerror(err));
 }
 
 void alsactl_client_unlisten(ALSACtlClient *self)
