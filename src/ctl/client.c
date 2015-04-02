@@ -75,6 +75,11 @@ static void ctl_client_set_property(GObject *obj, guint id,
 
 static void ctl_client_dispose(GObject *obj)
 {
+	G_OBJECT_CLASS(alsactl_client_parent_class)->dispose(obj);
+}
+
+static void ctl_client_finalize(GObject *obj)
+{
 	ALSACtlClient *self = ALSACTL_CLIENT(obj);
 	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
 
@@ -82,12 +87,7 @@ static void ctl_client_dispose(GObject *obj)
 	close(priv->fd);
 	priv->fd = 0;
 
-	G_OBJECT_CLASS(alsactl_client_parent_class)->dispose(obj);
-}
-
-static void ctl_client_finalize(GObject *gobject)
-{
-	G_OBJECT_CLASS(alsactl_client_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsactl_client_parent_class)->finalize(obj);
 }
 
 static void alsactl_client_class_init(ALSACtlClientClass *klass)

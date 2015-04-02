@@ -18,9 +18,9 @@ static void ctl_elem_byte_dispose(GObject *obj)
 	G_OBJECT_CLASS(alsactl_elem_byte_parent_class)->dispose(obj);
 }
 
-static void ctl_elem_byte_finalize(GObject *gobject)
+static void ctl_elem_byte_finalize(GObject *obj)
 {
-	G_OBJECT_CLASS(alsactl_elem_byte_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsactl_elem_byte_parent_class)->finalize(obj);
 }
 
 static void alsactl_elem_byte_class_init(ALSACtlElemByteClass *klass)

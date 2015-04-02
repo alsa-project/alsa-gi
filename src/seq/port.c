@@ -175,6 +175,11 @@ static void seq_port_set_property(GObject *obj, guint id,
 
 static void seq_port_dispose(GObject *obj)
 {
+	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(obj);
+}
+
+static void seq_port_finalize(GObject *obj)
+{
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
 	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
 
@@ -183,12 +188,7 @@ static void seq_port_dispose(GObject *obj)
 
 	alsaseq_client_close_port(self->_client, self);
 
-	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(obj);
-}
-
-static void seq_port_finalize(GObject *gobject)
-{
-	G_OBJECT_CLASS(alsaseq_port_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsaseq_port_parent_class)->finalize(obj);
 }
 
 /* Require to execute ioctl(2) after parameters are sets. */

@@ -36,9 +36,9 @@ static void ctl_elem_enum_dispose(GObject *obj)
 	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->dispose(obj);
 }
 
-static void ctl_elem_enum_finalize(GObject *gobject)
+static void ctl_elem_enum_finalize(GObject *obj)
 {
-	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->finalize(obj);
 }
 
 static void elem_enum_update(ALSACtlElem *parent, GError **exception)

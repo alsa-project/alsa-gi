@@ -155,19 +155,19 @@ static void timer_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void timer_client_dispose(GObject *gobject)
+static void timer_client_dispose(GObject *obj)
 {
-	G_OBJECT_CLASS(alsatimer_client_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS(alsatimer_client_parent_class)->dispose(obj);
 }
 
-static void timer_client_finalize(GObject *gobject)
+static void timer_client_finalize(GObject *obj)
 {
-	ALSATimerClient *self = ALSATIMER_CLIENT(gobject);
+	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	close(priv->fd);
 
-	G_OBJECT_CLASS(alsatimer_client_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsatimer_client_parent_class)->finalize(obj);
 }
 
 static void alsatimer_client_class_init(ALSATimerClientClass *klass)

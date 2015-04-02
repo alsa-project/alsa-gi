@@ -161,20 +161,20 @@ static void seq_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void seq_client_dispose(GObject *gobject)
+static void seq_client_dispose(GObject *obj)
 {
-	G_OBJECT_CLASS(alsaseq_client_parent_class)->dispose(gobject);
+	G_OBJECT_CLASS(alsaseq_client_parent_class)->dispose(obj);
 }
 
-static void seq_client_finalize(GObject *gobject)
+static void seq_client_finalize(GObject *obj)
 {
-	ALSASeqClient *self = ALSASEQ_CLIENT(gobject);
+	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
 	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
 
 	/* TODO: drop messages in my pool. */
 	close(priv->fd);
 
-	G_OBJECT_CLASS(alsaseq_client_parent_class)->finalize(gobject);
+	G_OBJECT_CLASS(alsaseq_client_parent_class)->finalize(obj);
 }
 
 static void alsaseq_client_class_init(ALSASeqClientClass *klass)
