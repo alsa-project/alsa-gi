@@ -16,6 +16,12 @@
 #  include <config.h>
 #endif
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSASeqPort", alsaseq_port)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsaseq_port_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 struct _ALSASeqPortPrivate {
 	int fd;
 	struct snd_seq_port_info info;
@@ -343,8 +349,6 @@ void alsaseq_port_update(ALSASeqPort *self, GError **exception)
 	g_return_if_fail(ALSASEQ_IS_PORT(self));
 	priv = SEQ_PORT_GET_PRIVATE(self);
 
-	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_PORT_INFO, &priv->info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_PORT_INFO, &priv->info) < 0)
+		raise(exception, errno);
 }

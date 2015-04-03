@@ -18,6 +18,12 @@
 #include "elem_byte.h"
 #include "elem_iec60958.h"
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlClient", alsactl_client)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsactl_client_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 typedef struct {
 	GSource src;
 	ALSACtlClient *client;
@@ -151,8 +157,7 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 
 	priv->fd = open(path, O_RDONLY | O_NONBLOCK);
 	if (priv->fd < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		priv->fd = 0;
 	}
 }
@@ -231,8 +236,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 end:
 	deallocate_elem_ids(&elem_list);
 	if (err > 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    err, "%s", strerror(err));
+		raise(exception, err);
 }
 
 static void insert_to_link_list(ALSACtlClient *self, ALSACtlElem *elem)
@@ -289,16 +293,14 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 			break;
 	}
 	if (i == count) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENODEV, "%s", strerror(ENODEV));
+		raise(exception, ENODEV);
 		goto end;
 	}
 	id = &elem_list.pids[i];
 
 	info.id = *id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		goto end;
 	}
 
@@ -326,8 +328,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 end:
 	deallocate_elem_ids(&elem_list);
 	if (err > 0)
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    err, "%s", strerror(err));
+		raise(exception, err);
 	return elem;
 }
 
@@ -336,8 +337,7 @@ static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
 {
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 	info->id.iface = iface;
@@ -347,8 +347,7 @@ static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
 
 	/* Check eleset name. */
 	if (name == NULL || strlen(name) >= sizeof(info->id.name)) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 	strcpy((char *)info->id.name, name);
@@ -372,9 +371,7 @@ static void add_elems(ALSACtlClient *self, GType type,
 	/* TODO: fix upstream. ELEM_ADD ioctl should fill enough info! */
 	info.id = *id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
-		g_set_error(exception,
-			    g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 	*id = info.id;
@@ -442,8 +439,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	else
 		info.type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	if (min >= max || (max - min) % step) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 	info.value.integer.min = min;
@@ -452,8 +448,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -492,8 +487,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -543,16 +537,14 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	for (i = 0; i < items->len; i++)
 		len += strlen(g_array_index(items, gchar *, i)) + 1;
 	if (len == 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 
 	/* Allocate temporary buffer. */
 	buf = malloc(len);
 	if (buf == NULL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
+		raise(exception, ENOMEM);
 		return;
 	}
 	memset(buf, 0, len);
@@ -570,8 +562,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	err = ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info);
 	free((void *)info.value.enumerated.names_ptr);
 	if (err < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -610,8 +601,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -648,8 +638,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -802,8 +791,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 
 	src = g_source_new(&funcs, sizeof(CtlClientSource));
 	if (src == NULL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
+		raise(exception, ENOMEM);
 		return;
 	}
 
@@ -822,8 +810,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	/* Be sure to subscribe events. */
 	subscribe = 1;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		alsactl_client_unlisten(self);
 	}
 }

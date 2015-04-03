@@ -11,6 +11,12 @@
 #include <sound/asound.h>
 #include "elem_int.h"
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlElemInt", alsactl_elem_int)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsactl_elem_int_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 struct _ALSACtlElemIntPrivate {
 	guint64 min;
 	guint64 max;
@@ -161,8 +167,7 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 
 	if ((values == NULL) ||
 	     (g_array_get_element_size(values) != sizeof(guint64))) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 
@@ -232,8 +237,7 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 	if ((values == NULL) ||
 	    (g_array_get_element_size(values) != sizeof(guint64)) ||
 	    values->len == 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 

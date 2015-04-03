@@ -4,7 +4,7 @@ Requirements:
 - Linux with ALSA
 - autoconf
 - automake
-- glib-2.0
+- glib-2.0 2.34 or later
 - gobject-2.0
 
 How to build:

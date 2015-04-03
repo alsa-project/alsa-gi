@@ -18,7 +18,7 @@ LT_INIT
 #
 # GLIB 2.0 is required.
 #
-PKG_CHECK_MODULES(GLIB20, [ glib-2.0 >= 2.32.4 ], HAVE_GLIB20="yes", HAVE_GLIB20="no")
+PKG_CHECK_MODULES(GLIB20, [ glib-2.0 >= 2.34 ], HAVE_GLIB20="yes", HAVE_GLIB20="no")
 AS_IF([ test "x$HAVE_GLIB20" = "xno" ],
       [AC_MSG_ERROR([ *** Glib 2.0 support not found])])
 AC_SUBST(GLIB20_CFLAGS)

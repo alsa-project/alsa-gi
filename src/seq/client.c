@@ -18,6 +18,12 @@
 
 #define BUFFER_SIZE	1024
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSASeqClient", alsaseq_client)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsaseq_client_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 typedef struct {
 	GSource src;
 	ALSASeqClient *self;
@@ -279,15 +285,13 @@ void alsaseq_client_open(ALSASeqClient *self, gchar *path, const gchar *name,
 	/* Always open duplex ports. */
 	priv->fd = open(path, O_RDWR | O_NONBLOCK);
 	if (priv->fd < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
 	/* Get client ID. */
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_CLIENT_ID, &id) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -295,17 +299,14 @@ void alsaseq_client_open(ALSASeqClient *self, gchar *path, const gchar *name,
 	priv->info.client = id;
 	strncpy(priv->info.name, name, sizeof(priv->info.name));
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_INFO, &priv->info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
 	/* Get client pool info. */
 	priv->pool.client = id;
-	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_POOL, &priv->pool) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_POOL, &priv->pool) < 0)
+		raise(exception, errno);
 }
 
 /**
@@ -325,8 +326,7 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 
 	/* Set client info. */
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &priv->info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -337,15 +337,13 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 	priv->pool.client = priv->info.client;
 	/* Set client pool info. */
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_CLIENT_POOL, &priv->pool) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
 	/* Get client info. */
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_INFO, &priv->info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -355,10 +353,8 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 	 */
 	priv->pool.client = priv->info.client;
 	/* Get client pool info. */
-	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_POOL, &priv->pool) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_CLIENT_POOL, &priv->pool) < 0)
+		raise(exception, errno);
 }
 
 static ALSASeqPort *add_port(ALSASeqClient *self,
@@ -403,8 +399,7 @@ ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 	info.addr.client = priv->info.client;
 	strncpy(info.name, name, sizeof(info.name));
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_CREATE_PORT, &info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return NULL;
 	}
 
@@ -458,9 +453,7 @@ void alsaseq_client_get_ports(ALSASeqClient *self, GArray *ports,
 		if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_QUERY_NEXT_PORT,
 			  &info) < 0) {
 			if (errno != ENOENT)
-				g_set_error(exception,
-					   g_quark_from_static_string(__func__),
-					    errno, "%s", strerror(errno));
+				raise(exception, errno);
 			break;
 		}
 
@@ -592,16 +585,14 @@ void alsaseq_client_listen(ALSASeqClient *self, GError **exception)
 
 	priv->write_buf = g_malloc(BUFFER_SIZE);
 	if (priv->write_buf == NULL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
+		raise(exception, ENOMEM);
 		return;
 	}
 
 	/* Create a source. */
 	src = g_source_new(&funcs, sizeof(SeqClientSource));
 	if (src == NULL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    ENOMEM, "%s", strerror(ENOMEM));
+		raise(exception, ENOMEM);
 		g_free(priv->write_buf);
 		priv->write_buf = NULL;
 		return;

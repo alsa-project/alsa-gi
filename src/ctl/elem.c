@@ -11,6 +11,12 @@
 #include <sound/asound.h>
 #include "elem.h"
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlElem", alsactl_elem)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsactl_elem_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 struct _ALSACtlElemPrivate {
 	int fd;
 	struct snd_ctl_elem_info info;
@@ -339,12 +345,10 @@ void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 	priv = CTL_ELEM_GET_PRIVATE(self);
 
 	id = &priv->info.id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	} else {
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
+		raise(exception, errno);
+	else
 		alsactl_elem_update(self, exception);
-	}
 }
 
 void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
@@ -356,12 +360,10 @@ void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 	priv = CTL_ELEM_GET_PRIVATE(self);
 
 	id = &priv->info.id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0) {
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
 		alsactl_elem_update(self, exception);
-	} else if (errno != -EINVAL) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	else if (errno != -EINVAL)
+		raise(exception, errno);
 }
 
 void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
@@ -374,10 +376,8 @@ void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
 	priv = CTL_ELEM_GET_PRIVATE(self);
 
 	elem_val->id.numid = priv->info.id.numid;
-	if (ioctl(priv->fd, cmd, elem_val) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, cmd, elem_val) < 0)
+		raise(exception, errno);
 }
 
 void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
@@ -390,10 +390,8 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 
 	info->id.numid = priv->info.id.numid;
 
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
+		raise(exception, errno);
 
 	/*
 	 * The numid is rollback to a numid of the first element in this set.

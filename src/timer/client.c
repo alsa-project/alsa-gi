@@ -17,6 +17,12 @@
 #  include <config.h>
 #endif
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSATimerClient", alsatimer_client)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsatimer_client_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
 typedef struct {
 	GSource src;
 	ALSATimerClient *self;
@@ -279,13 +285,15 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
 
 	priv->fd = open(path, O_RDONLY);
 	if (priv->fd < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_TREAD, &flag) < 0)
-		goto error;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_TREAD, &flag) < 0) {
+		raise(exception, errno);
+		close(priv->fd);
+		return;
+	}
 
 	/* Select system timer as a default. */
 	alsatimer_client_select_timer(self,
@@ -293,12 +301,6 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
 				      SNDRV_TIMER_SCLASS_NONE,
 				      -1, SNDRV_TIMER_GLOBAL_SYSTEM, 0,
 				      exception);
-
-	return;
-error:
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    errno, "%s", strerror(errno));
-	close(priv->fd);
 }
 
 /*
@@ -334,19 +336,20 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
 
 	id.dev_class = SNDRV_TIMER_CLASS_NONE;
 	while (1) {
-		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_NEXT_DEVICE, &id) < 0)
-			goto error;
+		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_NEXT_DEVICE, &id) < 0) {
+			raise(exception, errno);
+			break;
+		}
+
 		if (id.dev_class == SNDRV_TIMER_CLASS_NONE)
 			break;
-		info.tid = id;
-		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_GINFO, &info) < 0)
-			goto error;
-	}
 
-	return;
-error:
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    errno, "%s", strerror(errno));
+		info.tid = id;
+		if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_GINFO, &info) < 0) {
+			raise(exception, errno);
+			break;
+		}
+	}
 }
 
 /**
@@ -376,24 +379,25 @@ void alsatimer_client_select_timer(ALSATimerClient *self,
 	target.id.card = card;
 	target.id.device = device;
 	target.id.subdevice = subdevice;
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_SELECT, &target) < 0)
-		goto error;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_SELECT, &target) < 0) {
+		raise(exception, errno);
+		return;
+	}
 
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_INFO, &priv->info) < 0)
-		goto error;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_INFO, &priv->info) < 0) {
+		raise(exception, errno);
+		return;
+	}
 
 	priv->params.ticks = 1;
 	priv->params.queue_size = 128;
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0)
-		goto error;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
+		raise(exception, errno);
+		return;
+	}
 
 	/* Keep my id. */
 	priv->id = target.id;
-
-	return;
-error:
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    errno, "%s", strerror(errno));
 }
 
 /**
@@ -413,8 +417,7 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STATUS, &s) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -508,21 +511,22 @@ static void listen_client(ALSATimerClient *self, GError **exception)
 	};
 	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
 	GSource *src;
-	int err;
 
 	/* Keep a memory so as to store 10 events. */
 	priv->len = sizeof(struct snd_timer_tread) * 10;
 	priv->buf = g_malloc0(priv->len);
 	if (priv->buf == NULL) {
-		err = ENOMEM;
-		goto error;
+		raise(exception, ENOMEM);
+		return;
 	}
 
 	/* Create a source. */
 	src = g_source_new(&funcs, sizeof(TimerClientSource));
 	if (src == NULL) {
-		err = ENOMEM;
-		goto error;
+		raise(exception, ENOMEM);
+		g_free(priv->buf);
+		priv->len = 0;
+		return;
 	}
 
 	g_source_set_name(src, "ALSATimerClient");
@@ -535,14 +539,6 @@ static void listen_client(ALSATimerClient *self, GError **exception)
 	g_source_attach(src, g_main_context_default());
 	((TimerClientSource *)src)->tag =
 				g_source_add_unix_fd(src, priv->fd, G_IO_IN);
-
-	return;
-error:
-	if (priv->buf != NULL)
-		g_free(priv->buf);
-	priv->len = 0;
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    err, "%s", strerror(err));
 }
 
 static void unlisten_client(ALSATimerClient *self)
@@ -567,22 +563,19 @@ void alsatimer_client_start(ALSATimerClient *self, GError **exception)
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0)
-		goto error;
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
+		raise(exception, errno);
+		return;
+	}
 
 	listen_client(self, exception);
 	if (*exception != NULL)
 		return;
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_START) < 0) {
+		raise(exception, errno);
 		unlisten_client(self);
-		goto error;
 	}
-
-	return;
-error:
-	g_set_error(exception, g_quark_from_static_string(__func__),
-		    errno, "%s", strerror(errno));
 }
 
 void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
@@ -593,8 +586,7 @@ void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STOP) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 	}
 
 	unlisten_client(self);
@@ -608,8 +600,7 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 	priv = TIMER_CLIENT_GET_PRIVATE(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
+		raise(exception, errno);
 		return;
 	}
 
@@ -617,8 +608,6 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 	if (*exception != NULL)
 		return;
 
-	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_CONTINUE) < 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    errno, "%s", strerror(errno));
-	}
+	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_CONTINUE) < 0)
+		raise(exception, errno);
 }

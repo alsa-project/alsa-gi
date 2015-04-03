@@ -16,7 +16,7 @@ client = ALSASeq.Client()
 # Test Client object
 print('Test Client object')
 try:
-    client.open('/dev/snd/seq', "sequencer-client")
+    client.open('/dev/snd/', "sequencer-client")
 except Exception as e:
     print(e)
     sys.exit()

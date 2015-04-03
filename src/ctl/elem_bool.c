@@ -11,6 +11,12 @@
 #include <sound/asound.h>
 #include "elem_bool.h"
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlElemBool", alsactl_elem_bool)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsactl_elem_bool_quark(), errno,	\
+		    "%d: %s", __LINE__, strerror(errno))
+
 G_DEFINE_TYPE(ALSACtlElemBool, alsactl_elem_bool, ALSACTL_TYPE_ELEM)
 
 static void ctl_elem_bool_dispose(GObject *obj)
@@ -57,8 +63,7 @@ void alsactl_elem_bool_read(ALSACtlElemBool *self, GArray *values,
 
 	if ((values == NULL) ||
 	     (g_array_get_element_size(values) != sizeof(gboolean))) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 
@@ -100,8 +105,7 @@ void alsactl_elem_bool_write(ALSACtlElemBool *self, GArray *values,
 	if (values == NULL ||
 	    g_array_get_element_size(values) != sizeof(gboolean) ||
 	    values->len == 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 

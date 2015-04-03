@@ -14,6 +14,12 @@
 #define CHARS_PER_LABEL	64
 #define LABELS_PER_ELEM	1024
 
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlElemEnum", alsactl_elem_enum)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsactl_elem_enum_quark(), errno,	\
+		    "%d: %s", __LINE__, strerror(errno))
+
 struct _ALSACtlElemEnumPrivate {
 	unsigned int item_count;
 	char (*strings)[CHARS_PER_LABEL];
@@ -161,8 +167,7 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 
 	if ((values == NULL) ||
 	    (g_array_get_element_size(values) != sizeof(gpointer))) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 
@@ -224,8 +229,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 	if ((values == NULL) ||
 	    (g_array_get_element_size(values) != sizeof(gpointer)) ||
 	    values->len == 0) {
-		g_set_error(exception, g_quark_from_static_string(__func__),
-			    EINVAL, "%s", strerror(EINVAL));
+		raise(exception, EINVAL);
 		return;
 	}
 
