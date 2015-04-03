@@ -8,50 +8,39 @@
 #  include <config.h>
 #endif
 
-struct _ALSACardSndUnitPrivate {
-	gchar *unit;
-};
-G_DEFINE_TYPE_WITH_PRIVATE(ALSACardSndUnit, alsacard_snd_unit, G_TYPE_OBJECT)
+/* For error handling. */
+G_DEFINE_QUARK("ALSACardUnit", alsacard_unit)
+#define raise(exception, errno)						\
+	g_set_error(exception, alsacard_unit_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
 
-static void alsacard_snd_unit_dispose(GObject *obj)
+G_DEFINE_TYPE(ALSACardUnit, alsacard_unit, G_TYPE_OBJECT)
+
+static void alsacard_unit_dispose(GObject *obj)
 {
-	G_OBJECT_CLASS(alsacard_snd_unit_parent_class)->dispose(obj);
+	G_OBJECT_CLASS(alsacard_unit_parent_class)->dispose(obj);
 }
 
-/*
-gobject_new() -> g_clear_object()
-*/
-
-static void alsacard_snd_unit_finalize(GObject *obj)
+static void alsacard_unit_finalize(GObject *obj)
 {
-	ALSACardSndUnit *self = ALSACARD_SND_UNIT(obj);
-
-	if (self->priv->unit)
-		free(self->priv->unit);
-
-	G_OBJECT_CLASS(alsacard_snd_unit_parent_class)->finalize(obj);
-
-	printf("destroy\n");
+	G_OBJECT_CLASS(alsacard_unit_parent_class)->finalize(obj);
 }
 
-static void alsacard_snd_unit_class_init(ALSACardSndUnitClass *klass)
+static void alsacard_unit_class_init(ALSACardUnitClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->dispose = alsacard_snd_unit_dispose;
-	gobject_class->finalize = alsacard_snd_unit_finalize;
-
-	printf("class initialized\n");
+	gobject_class->dispose = alsacard_unit_dispose;
+	gobject_class->finalize = alsacard_unit_finalize;
 }
 
 static void
-alsacard_snd_unit_init(ALSACardSndUnit *self)
+alsacard_unit_init(ALSACardUnit *self)
 {
-	self->priv = alsacard_snd_unit_get_instance_private(self);
-	printf("init\n");
+	return;
 }
 
-ALSACardSndUnit *alsacard_snd_unit_new(gchar *str)
+void alsacard_unit_open(ALSACardUnit *self, gchar *path, GError **exception)
 {
-    return g_object_new(ALSACARD_TYPE_SND_UNIT, NULL);;
+	return;
 }
