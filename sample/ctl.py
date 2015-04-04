@@ -19,7 +19,7 @@ elements = []
 # Create client nad open
 client = ALSACtl.Client()
 try:
-    client.open('/dev/snd/controlC1')
+    client.open('/dev/snd/controlC0')
 except Exception as e:
     print(e)
     sys.exit()
