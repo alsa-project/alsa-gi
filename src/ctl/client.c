@@ -165,8 +165,9 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 	}
 }
 
-static int allocate_elem_ids(ALSACtlClientPrivate *priv,
-			     struct snd_ctl_elem_list *list)
+static void allocate_elem_ids(ALSACtlClientPrivate *priv,
+			      struct snd_ctl_elem_list *list,
+			      GError **exception)
 {
 	unsigned int count;
 
@@ -174,27 +175,30 @@ static int allocate_elem_ids(ALSACtlClientPrivate *priv,
 	memset(list, 0, sizeof(struct snd_ctl_elem_list));
 
 	/* Get the number of elements in this control device. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0)
-		return errno;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+		raise(exception, errno);
+		return;
+	}
 
 	/* No elements found. */
 	if (list->count == 0)
-		return 0;
+		return;
 	count = list->count;
 
 	/* Allocate spaces for these elements. */
 	list->pids = calloc(count, sizeof(struct snd_ctl_elem_id));
-	if (list->pids == NULL)
-		return ENOMEM;
+	if (list->pids == NULL) {
+		raise(exception, ENOMEM);
+		return;
+	}
 	list->space = count;
 
 	/* Get the IDs of elements in this control device. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+		raise(exception, errno);
 		free(list->pids);
-		return errno;
+		list->pids = NULL;
 	}
-
-	return 0;
 }
 
 static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
@@ -212,24 +216,23 @@ static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
  *
  */
 void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
-				     GError **exception)
+				  GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_list elem_list = {0};
 	unsigned int i, count;
-	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
 	/* Check the size of element in given list. */
 	if (g_array_get_element_size(list) != sizeof(guint)) {
-		err = EINVAL;
-		goto end;
+		raise(exception, EINVAL);
+		return;
 	}
 
-	err = allocate_elem_ids(priv, &elem_list);
-	if (err > 0)
+	allocate_elem_ids(priv, &elem_list, exception);
+	if (*exception != NULL)
 		goto end;
 	count = elem_list.count;
 
@@ -238,8 +241,6 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 		g_array_append_val(list, elem_list.pids[i].numid);
 end:
 	deallocate_elem_ids(&elem_list);
-	if (err > 0)
-		raise(exception, err);
 }
 
 static void insert_to_link_list(ALSACtlClient *self, ALSACtlElem *elem)
@@ -280,14 +281,13 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	struct snd_ctl_elem_id *id;
 	struct snd_ctl_elem_info info = {{0}};
 	unsigned int i, count;
-	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	err = allocate_elem_ids(priv, &elem_list);
-	if (err > 0)
-		goto end;
+	allocate_elem_ids(priv, &elem_list, exception);
+	if (*exception != NULL)
+		return NULL;
 	count = elem_list.count;
 
 	/* Seek a element indicated by the numerical ID. */
@@ -330,8 +330,6 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	insert_to_link_list(self, elem);
 end:
 	deallocate_elem_ids(&elem_list);
-	if (err > 0)
-		raise(exception, err);
 	return elem;
 }
 
