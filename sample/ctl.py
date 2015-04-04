@@ -112,7 +112,7 @@ except Exception as e:
 # Get current element list
 try:
     element_list = client.get_elem_list()
-except Excepion as e:
+except Exception as e:
     print(e)
     sys.exit()
 
