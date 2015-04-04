@@ -24,6 +24,8 @@ G_DEFINE_QUARK("ALSACtlClient", alsactl_client)
 	g_set_error(exception, alsactl_client_quark(), errno,		\
 		    "%d: %s", __LINE__, strerror(errno))
 
+#define NUM_EVENTS	10
+
 typedef struct {
 	GSource src;
 	ALSACtlClient *client;
@@ -31,7 +33,8 @@ typedef struct {
 } CtlClientSource;
 
 struct _ALSACtlClientPrivate {
-	struct snd_ctl_event event;
+	/* To save stack usage. */
+	struct snd_ctl_event event[NUM_EVENTS];
 
 	GList *elems;
 	GMutex lock;
@@ -736,6 +739,8 @@ static gboolean check_src(GSource *gsrc)
 	GIOCondition condition;
 	ALSACtlClient *client = src->client;
 	ALSACtlClientPrivate *priv;
+	unsigned int i;
+	unsigned int count;
 	int len;
 
 	condition = g_source_query_unix_fd(gsrc, src->tag);
@@ -746,21 +751,23 @@ static gboolean check_src(GSource *gsrc)
 		goto end;
 	priv = CTL_CLIENT_GET_PRIVATE(client);
 
-	/* To save stack usage. */
-	len = read(priv->fd, &priv->event, sizeof(struct snd_ctl_event));
-	if ((len < 0) || (len != sizeof(struct snd_ctl_event))) {
+	len = read(priv->fd, &priv->event, sizeof(priv->event));
+	if (len < 0) {
 		/* Read error but ignore it. */
 		goto end;
 	}
 
-	/* NOTE: currently ALSA middleware supports 'elem' event only. */
-	switch (priv->event.type) {
-	case SNDRV_CTL_EVENT_ELEM:
-		handle_elem_event(client, priv->event.data.elem.mask,
-				  &priv->event.data.elem.id);
-		break;
-	default:
-		break;
+	count = len / sizeof(struct snd_ctl_event);
+	for (i = 0; i < count; i++) {
+		/* Currently ALSA middleware supports 'elem' event only. */
+		switch (priv->event[i].type) {
+		case SNDRV_CTL_EVENT_ELEM:
+			handle_elem_event(client, priv->event[i].data.elem.mask,
+					  &priv->event[i].data.elem.id);
+			break;
+		default:
+			break;
+		}
 	}
 end:
 	/* Don't go to dispatch, then continue to process this source. */
