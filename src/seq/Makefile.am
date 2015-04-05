@@ -13,7 +13,6 @@ lib_LTLIBRARIES =				\
 	libalsaseq.la
 
 libalsaseq_la_LIBADD =				\
-	-lasound				\
 	$(GLIB_LIBS)				\
 	$(GIO_LIBS)
 

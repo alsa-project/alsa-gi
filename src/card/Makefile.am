@@ -6,13 +6,13 @@ AM_CPPFLAGS =					\
 
 AM_CFLAGS =					\
 	$(GLIB_CFLAGS)				\
-	$(GIO_CFLAGS)
+	$(GIO_CFLAGS)				\
+	-Wall
 
 lib_LTLIBRARIES =				\
 	libalsacard.la
 
 libalsacard_la_LIBADD =				\
-	-lasound				\
 	$(GLIB_LIBS)				\
 	$(GIO_LIBS)
 
