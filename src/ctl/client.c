@@ -169,7 +169,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 			      struct snd_ctl_elem_list *list,
 			      GError **exception)
 {
-	unsigned int count;
+	struct snd_ctl_elem_id *ids;
 
 	/* Help for deallocation. */
 	memset(list, 0, sizeof(struct snd_ctl_elem_list));
@@ -183,22 +183,34 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 	/* No elements found. */
 	if (list->count == 0)
 		return;
-	count = list->count;
 
 	/* Allocate spaces for these elements. */
-	list->pids = calloc(count, sizeof(struct snd_ctl_elem_id));
-	if (list->pids == NULL) {
+	ids = calloc(list->count, sizeof(struct snd_ctl_elem_id));
+	if (ids == NULL) {
 		raise(exception, ENOMEM);
 		return;
 	}
-	list->space = count;
 
-	/* Get the IDs of elements in this control device. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
-		raise(exception, errno);
-		free(list->pids);
-		list->pids = NULL;
+	list->offset = 0;
+	while (list->offset < list->count) {
+		/*
+		 * ALSA middleware has limitation of one operation.
+		 * 1000 is enought less than the limitation.
+		 */
+		list->space = MIN(list->count - list->offset, 1000);
+		list->pids = ids + list->offset;
+
+		/* Get the IDs of elements in this control device. */
+		if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+			raise(exception, errno);
+			free(list->pids);
+			list->pids = NULL;
+		}
+
+		list->offset += list->space;
 	}
+	list->pids = ids;
+	list->space = list->count;
 }
 
 static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
