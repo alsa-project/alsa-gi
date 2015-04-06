@@ -431,6 +431,7 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 
 static gboolean prepare_src(GSource *gsrc, gint *timeout)
 {
+	/* Use blocking poll(2) to save CPU usage. */
 	*timeout = -1;
 
 	/* This source is not ready, let's poll(2) */
