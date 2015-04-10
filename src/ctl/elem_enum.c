@@ -21,7 +21,7 @@ G_DEFINE_QUARK("ALSACtlElemEnum", alsactl_elem_enum)
 		    "%d: %s", __LINE__, strerror(errno))
 
 struct _ALSACtlElemEnumPrivate {
-	unsigned int item_count;
+	unsigned int labels_count;
 	char (*strings)[CHARS_PER_LABEL];
 };
 
@@ -64,10 +64,10 @@ static void elem_enum_update(ALSACtlElem *parent, GError **exception)
 	alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
 	if (*exception != NULL)
 		return;
-	priv->item_count = info.value.enumerated.items;
+	priv->labels_count = info.value.enumerated.items;
 
 	/* Set the name of each item. */
-	for (i = 0; i < priv->item_count; i++) {
+	for (i = 0; i < priv->labels_count; i++) {
 		info.value.enumerated.item = i;
 
 		alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info,
@@ -103,14 +103,14 @@ static void alsactl_elem_enum_init(ALSACtlElemEnum *self)
 }
 
 /**
- * alsactl_elem_enum_get_items:
+ * alsactl_elem_enum_get_labels:
  * @self: A #ALSACtlElemEnum
- * @items: (element-type utf8) (out caller-allocates) (transfer container): a strings array
+ * @labels: (element-type utf8) (out caller-allocates) (transfer container): a strings array
  * @exception: A #GError
  *
  */
-void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
-				 GError **exception)
+void alsactl_elem_enum_get_labels(ALSACtlElemEnum *self, GArray *labels,
+				  GError **exception)
 {
 	ALSACtlElemEnumPrivate *priv;
 	char (*strings)[CHARS_PER_LABEL];
@@ -121,11 +121,11 @@ void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
 	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
 	strings = priv->strings;
 
-	for (i = 0; i < priv->item_count; i++) {
+	for (i = 0; i < priv->labels_count; i++) {
 		string = strings[i];
 
 		/* The type of last parameter is important. */
-		g_array_insert_val(items, i, string);
+		g_array_insert_val(labels, i, string);
 	}
 }
 
@@ -189,7 +189,7 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 static void pull_as_string(struct snd_ctl_elem_value *elem_val,
 			   unsigned int channels,
 			   char (*strings)[CHARS_PER_LABEL],
-			   unsigned int item_count, GArray *values)
+			   unsigned int labels_count, GArray *values)
 {
 	unsigned int *vals = elem_val->value.enumerated.item;
 	char *string;
@@ -198,7 +198,7 @@ static void pull_as_string(struct snd_ctl_elem_value *elem_val,
 
 	for (i = 0; i < channels; i++) {
 		string = (char *)g_array_index(values, gpointer, i);
-		for (j = 0; j < item_count; j++) {
+		for (j = 0; j < labels_count; j++) {
 			if (strcmp(string, strings[j]) == 0) {
 				vals[i] = j;
 				break;
@@ -240,7 +240,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 	channels = MIN(values->len, g_value_get_uint(&tmp));
 
 	/* Copy for driver. */
-	pull_as_string(&elem_val, channels, priv->strings, priv->item_count,
+	pull_as_string(&elem_val, channels, priv->strings, priv->labels_count,
 		       values);
 
 	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),

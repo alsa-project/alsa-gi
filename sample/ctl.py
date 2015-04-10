@@ -75,7 +75,7 @@ try:
     elems = client.add_enum_elems(2, 4, name, 6, items)
     for elem in elems:
         elem.unlock()
-        print(elem.get_items())
+        print(elem.get_labels())
         vals = elem.read()
         print(vals)
         elem.write(vals)
