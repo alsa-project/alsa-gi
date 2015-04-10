@@ -117,7 +117,7 @@ except Exception as e:
     sys.exit()
 
 # Print element and its properties
-properties = ('id', 'type', 'iface', 'device', 'subdevice', 'count',
+properties = ('id', 'type', 'iface', 'device', 'subdevice', 'channels',
               'readable', 'writable', 'volatile', 'inactive', 'locked',
               'is-owned', 'is-user')
 for i in element_list:

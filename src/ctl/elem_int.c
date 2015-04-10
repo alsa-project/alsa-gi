@@ -128,23 +128,23 @@ void alsactl_elem_int_get_step(ALSACtlElemInt *self, unsigned int *step)
 	*step = priv->step;
 }
 
-static void fill_as_uint32(GArray *values, unsigned int count,
+static void fill_as_uint32(GArray *values, unsigned int channels,
 			   struct snd_ctl_elem_value *elem_val)
 {
 	long *vals = elem_val->value.integer.value;
 	unsigned int i;
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		g_array_insert_val(values, i, vals[i]);
 }
 
-static void fill_as_uint64(GArray *values, unsigned int count,
+static void fill_as_uint64(GArray *values, unsigned int channels,
 			   struct snd_ctl_elem_value *elem_val)
 {
 	long long *vals = elem_val->value.integer64.value;
 	unsigned int i;
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		g_array_insert_val(values, i, vals[i]);
 }
 
@@ -160,7 +160,7 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 {
 	struct snd_ctl_elem_value elem_val = {{0}};
 
-	GValue count = G_VALUE_INIT;
+	GValue channels = G_VALUE_INIT;
 	GValue type = G_VALUE_INIT;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
@@ -179,8 +179,8 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 
 
 	/* Check the number of values in this element. */
-	g_value_init(&count, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &count);
+	g_value_init(&channels, G_TYPE_UINT);
+	g_object_get_property(G_OBJECT(self), "channels", &channels);
 
 	/* Get type. */
 	g_value_init(&type, G_TYPE_INT);
@@ -188,32 +188,32 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 
 	/* Copy for application. */
 	if (g_value_get_int(&type) == SNDRV_CTL_ELEM_TYPE_INTEGER)
-		fill_as_uint32(values, g_value_get_uint(&count), &elem_val);
+		fill_as_uint32(values, g_value_get_uint(&channels), &elem_val);
 	else
-		fill_as_uint64(values, g_value_get_uint(&count), &elem_val);
+		fill_as_uint64(values, g_value_get_uint(&channels), &elem_val);
 }
 
-static void pull_as_uint32(GArray *values, unsigned int count,
+static void pull_as_uint32(GArray *values, unsigned int channels,
 			   struct snd_ctl_elem_value *elem_val)
 {
 	long *vals = elem_val->value.integer.value;
 	unsigned int i;
 
-	count = MIN(count, values->len);
+	channels = MIN(channels, values->len);
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		vals[i] = g_array_index(values, guint64, i) & 0xffffffff;
 }
 
-static void pull_as_uint64(GArray *values, unsigned int count,
+static void pull_as_uint64(GArray *values, unsigned int channels,
 			   struct snd_ctl_elem_value *elem_val)
 {
 	long long *vals = elem_val->value.integer64.value;
 	unsigned int i;
 
-	count = MIN(count, values->len);
+	channels = MIN(channels, values->len);
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		vals[i] = g_array_index(values, guint64, i);
 }
 
@@ -229,7 +229,7 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 {
 	struct snd_ctl_elem_value elem_val = {{0}};
 
-	GValue count = G_VALUE_INIT;
+	GValue channels = G_VALUE_INIT;
 	GValue type = G_VALUE_INIT;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
@@ -242,8 +242,8 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 	}
 
 	/* Get the number of values in this element. */
-	g_value_init(&count, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &count);
+	g_value_init(&channels, G_TYPE_UINT);
+	g_object_get_property(G_OBJECT(self), "channels", &channels);
 
 	/* Get type of this element. */
 	g_value_init(&type, G_TYPE_INT);
@@ -251,9 +251,9 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 
 	/* Pull values from application for driver. */
 	if (g_value_get_int(&type) == SNDRV_CTL_ELEM_TYPE_INTEGER)
-		pull_as_uint32(values, g_value_get_uint(&count), &elem_val);
+		pull_as_uint32(values, g_value_get_uint(&channels), &elem_val);
 	else
-		pull_as_uint64(values, g_value_get_uint(&count), &elem_val);
+		pull_as_uint64(values, g_value_get_uint(&channels), &elem_val);
 
 	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
 				 SNDRV_CTL_IOCTL_ELEM_WRITE, &elem_val,

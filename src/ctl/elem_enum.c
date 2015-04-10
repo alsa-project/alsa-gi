@@ -130,14 +130,14 @@ void alsactl_elem_enum_get_items(ALSACtlElemEnum *self, GArray *items,
 }
 
 static void fill_as_string(GArray *values, char (*strings)[CHARS_PER_LABEL],
-			   unsigned int count,
+			   unsigned int channels,
 			   struct snd_ctl_elem_value *elem_val)
 {
 	unsigned int *vals = elem_val->value.enumerated.item;
 	char *string;
 	unsigned int i;
 
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < channels; i++) {
 		string = strings[vals[i]];
 
 		/* The type of a third argument is important. */
@@ -160,7 +160,7 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 	struct snd_ctl_elem_value elem_val = {{0}};
 
 	GValue tmp = G_VALUE_INIT;
-	unsigned int count;
+	unsigned int channels;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
 	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
@@ -179,15 +179,16 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 
 	/* Check the number of values in this element. */
 	g_value_init(&tmp, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &tmp);
-	count = g_value_get_uint(&tmp);
+	g_object_get_property(G_OBJECT(self), "channels", &tmp);
+	channels = g_value_get_uint(&tmp);
 
 	/* Copy for application. */
-	fill_as_string(values, priv->strings, count, &elem_val);
+	fill_as_string(values, priv->strings, channels, &elem_val);
 }
 
 static void pull_as_string(struct snd_ctl_elem_value *elem_val,
-			   unsigned int count, char (*strings)[CHARS_PER_LABEL],
+			   unsigned int channels,
+			   char (*strings)[CHARS_PER_LABEL],
 			   unsigned int item_count, GArray *values)
 {
 	unsigned int *vals = elem_val->value.enumerated.item;
@@ -195,7 +196,7 @@ static void pull_as_string(struct snd_ctl_elem_value *elem_val,
 	unsigned int i;
 	unsigned int j;
 
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < channels; i++) {
 		string = (char *)g_array_index(values, gpointer, i);
 		for (j = 0; j < item_count; j++) {
 			if (strcmp(string, strings[j]) == 0) {
@@ -221,7 +222,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 	struct snd_ctl_elem_value elem_val = {{0}};
 
 	GValue tmp = G_VALUE_INIT;
-	unsigned int count;
+	unsigned int channels;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
 	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
@@ -235,11 +236,11 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 
 	/* Calculate the number of values in this element. */
 	g_value_init(&tmp, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &tmp);
-	count = MIN(values->len, g_value_get_uint(&tmp));
+	g_object_get_property(G_OBJECT(self), "channels", &tmp);
+	channels = MIN(values->len, g_value_get_uint(&tmp));
 
 	/* Copy for driver. */
-	pull_as_string(&elem_val, count, priv->strings, priv->item_count,
+	pull_as_string(&elem_val, channels, priv->strings, priv->item_count,
 		       values);
 
 	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),

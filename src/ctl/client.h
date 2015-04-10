@@ -64,20 +64,20 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 				     GError **exception);
 void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 				  guint number, const gchar *name,
-				  guint count, guint64 min, guint64 max,
+				  guint channels, guint64 min, guint64 max,
 				  guint step, GArray *elems,
 				  GError **exception);
 void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint count, GArray *elems,
+				   guint channels, GArray *elems,
 				   GError **exception);
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
-				   guint count, GArray *items,
+				   guint channels, GArray *items,
 				   GArray *elems, GError **exception);
 void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint count, GArray *elems,
+				   guint channels, GArray *elems,
 				   GError **exception);
 void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 				       guint number, const gchar *name,

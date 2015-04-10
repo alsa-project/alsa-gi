@@ -422,7 +422,7 @@ static void add_elems(ALSACtlClient *self, GType type,
  * @iface: the type of interface
  * @number: the number of elements added by this operation
  * @name: the name of new elements
- * @count: the number of values in each element
+ * @channels: the number of channelss in each element
  * @min: the minimum value for elements in new element
  * @max: the maximum value for elements in new element
  * @step: the step of value for elements in new element
@@ -432,7 +432,7 @@ static void add_elems(ALSACtlClient *self, GType type,
  */
 void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 				  guint number, const gchar *name,
-				  guint count, guint64 min, guint64 max,
+				  guint channels, guint64 min, guint64 max,
 				  guint step, GArray *elems,
 				  GError **exception)
 {
@@ -442,7 +442,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, number, name, count, exception);
+	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
 		return;
 
@@ -475,14 +475,14 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
  * @iface: the type of interface
  * @number: the number of elements added by this operation
  * @name: the name of new elements
- * @count: the number of values in each element
+ * @channels: the number of values in each element
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
  */
 void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint count, GArray *elems,
+				   guint channels, GArray *elems,
 				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -491,7 +491,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, number, name, count, exception);
+	init_info(&info, iface, number, name, channels, exception);
 	if (*exception)
 		return;
 
@@ -514,7 +514,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  * @iface: the type of interface
  * @number: the number of elements added by this operation
  * @name: the name of new elements
- * @count: the number of values in each element
+ * @channels: the number of values in each element
  * @items: (element-type utf8): (array) (in): string items for each items
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
@@ -523,7 +523,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  */
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
-				   guint count, GArray *items,
+				   guint channels, GArray *items,
 				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -537,7 +537,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, number, name, count, exception);
+	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
 		return;
 
@@ -589,14 +589,14 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
  * @iface: the type of interface
  * @number: the number of elements added by this operation
  * @name: the name of new elements
- * @count: the number of values in each element
+ * @channels: the number of values in each element
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
  */
 void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint count, GArray *elems,
+				   guint channels, GArray *elems,
 				   GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -605,7 +605,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = CTL_CLIENT_GET_PRIVATE(self);
 
-	init_info(&info, iface, number, name, count, exception);
+	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
 		return;
 

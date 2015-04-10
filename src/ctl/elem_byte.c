@@ -56,7 +56,7 @@ void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
 	unsigned char *vals = elem_val.value.bytes.data;
 
 	GValue tmp = G_VALUE_INIT;
-	unsigned int count;
+	unsigned int channels;
 	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
@@ -75,11 +75,11 @@ void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
 
 	/* Check the number of values in this element. */
 	g_value_init(&tmp, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &tmp);
-	count = g_value_get_uint(&tmp);
+	g_object_get_property(G_OBJECT(self), "channels", &tmp);
+	channels = g_value_get_uint(&tmp);
 
 	/* Copy for application. */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		g_array_insert_val(values, i, vals[i]);
 }
 
@@ -97,7 +97,7 @@ void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,
 	unsigned char *vals = elem_val.value.bytes.data;
 
 	GValue tmp = G_VALUE_INIT;
-	unsigned int count;
+	unsigned int channels;
 	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
@@ -111,11 +111,11 @@ void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,
 
 	/* Calculate the number of values in this element. */
 	g_value_init(&tmp, G_TYPE_UINT);
-	g_object_get_property(G_OBJECT(self), "count", &tmp);
-	count = MIN(values->len, g_value_get_uint(&tmp));
+	g_object_get_property(G_OBJECT(self), "channels", &tmp);
+	channels = MIN(values->len, g_value_get_uint(&tmp));
 
 	/* Copy for driver. */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < channels; i++)
 		vals[i] = g_array_index(values, guint8, i);
 
 	alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
