@@ -16,13 +16,14 @@
 #  include <config.h>
 #endif
 
-#define BUFFER_SIZE	1024
-
 /* For error handling. */
 G_DEFINE_QUARK("ALSASeqClient", alsaseq_client)
 #define raise(exception, errno)						\
 	g_set_error(exception, alsaseq_client_quark(), errno,		\
 		    "%d: %s", __LINE__, strerror(errno))
+
+#define BUFFER_SIZE	1024
+#define NUM_EVENTS	10
 
 typedef struct {
 	GSource src;
@@ -41,7 +42,7 @@ struct _ALSASeqClientPrivate {
 	unsigned int writable_bytes;
 	GMutex write_lock;
 
-	struct snd_seq_event read_ev;
+	struct snd_seq_event read_ev[NUM_EVENTS];
 
 	GList *ports;
 	GMutex lock;
@@ -573,38 +574,48 @@ static const char *const ev_names[] = {
 	[SNDRV_SEQ_EVENT_NONE]		= "none",
 };
 
+static void deliver_event(ALSASeqPort *port, struct snd_seq_event *ev)
+{
+	switch (ev->type) {
+	default:
+		/* TODO: delivery data */
+		g_signal_emit_by_name(G_OBJECT(port), "event",
+				      ev_names[ev->type], ev->flags, ev->tag,
+				      ev->queue, ev->time.time.tv_sec,
+				      ev->time.time.tv_nsec,
+				      ev->source.client, ev->source.port,
+				      NULL);
+		break;
+	}
+}
+
 static void read_messages(ALSASeqClientPrivate *priv)
 {
-	struct snd_seq_event *ev = &priv->read_ev;
-	int len;
+	int len, i;
 
 	GList *entry;
 	ALSASeqPort *port;
 	GValue val = G_VALUE_INIT;
 
 	g_value_init(&val, G_TYPE_INT);
-	while (1) {
-		len = read(priv->fd, ev, sizeof(struct snd_seq_event));
-		if (len <= 0)
-			break;
+	len = read(priv->fd, &priv->read_ev, sizeof(priv->read_ev));
+	if (len <= 0)
+		return;
+	len /= sizeof(struct snd_seq_event);
 
-		g_mutex_lock(&priv->lock);
+	g_mutex_lock(&priv->lock);
+	for (i = 0; i < len; i++) {
 		for (entry = priv->ports; entry != NULL; entry = entry->next) {
 			port = (ALSASeqPort *)entry->data;
 
 			g_object_get_property(G_OBJECT(port), "id", &val);
-			if (ev->dest.port != g_value_get_int(&val))
-				continue;
+			if (priv->read_ev[i].dest.port != g_value_get_int(&val))
+				break;
 
-			/* TODO: delivery data */
-			g_signal_emit_by_name(G_OBJECT(port), "event",
-				ev_names[ev->type], ev->flags, ev->tag,
-				ev->queue, ev->time.time.tv_sec,
-				ev->time.time.tv_nsec, ev->source.client,
-				ev->source.port, NULL);
+			deliver_event(port, &priv->read_ev[i]);
 		}
-		g_mutex_unlock(&priv->lock);
 	}
+	g_mutex_unlock(&priv->lock);
 }
 
 static gboolean check_src(GSource *gsrc)
