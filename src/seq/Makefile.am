@@ -1,4 +1,5 @@
-CLEANFILES =
+CLEANFILES =					\
+	alsaseq_sigs_marshal.*
 
 AM_CPPFLAGS =					\
 	 -I$(top_builddir)			\
