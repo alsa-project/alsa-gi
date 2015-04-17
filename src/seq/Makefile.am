@@ -31,16 +31,17 @@ pkginclude_HEADERS = 				\
 	port.h
 
 alsaseq_sigs_marshal.list:
-	find | grep \.c$$ | xargs cat | 				\
+	$(AM_V_GEN)( find | grep \.c$$ | xargs cat | 			\
 	sed -n -e 's/.*alsaseq_sigs_marshal_\([A-Z]*__[A-Z_]*\).*/\1/p' |\
-	sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@
+	sed -e 's/__/:/' -e 'y/_/,/' ) | sort -u > $@
 
 alsaseq_sigs_marshal.h: alsaseq_sigs_marshal.list
-	glib-genmarshal --header --prefix=alsaseq_sigs_marshal $< > $@
+	$(AM_V_GEN)( glib-genmarshal --header				\
+		--prefix=alsaseq_sigs_marshal $< ) > $@
 
 alsaseq_sigs_marshal.c: alsaseq_sigs_marshal.list alsaseq_sigs_marshal.h
-	echo '#include "alsaseq_sigs_marshal.h"' > $@
-	glib-genmarshal --body --prefix=alsaseq_sigs_marshal $< >> $@
+	$(AM_V_GEN)( echo '#include "alsaseq_sigs_marshal.h"';		\
+		glib-genmarshal --body --prefix=alsaseq_sigs_marshal $< ) > $@
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
