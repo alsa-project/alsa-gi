@@ -490,6 +490,89 @@ static void write_messages(ALSASeqClientPrivate *priv)
 	g_mutex_unlock(&priv->write_lock);
 }
 
+static const char *const ev_names[] = {
+	[SNDRV_SEQ_EVENT_SYSTEM] 	= "system",
+	[SNDRV_SEQ_EVENT_RESULT] 	= "result",
+
+	/* snd_seq_ev_note */
+	[SNDRV_SEQ_EVENT_NOTE]		= "note",
+	[SNDRV_SEQ_EVENT_NOTEON]	= "noteon",
+	[SNDRV_SEQ_EVENT_NOTEOFF]	= "noteoff",
+	[SNDRV_SEQ_EVENT_KEYPRESS]	= "keypress",
+
+	/* snd_seq_ev_ctrl */
+	[SNDRV_SEQ_EVENT_CONTROLLER]	= "controller",
+	[SNDRV_SEQ_EVENT_PGMCHANGE]	= "pgmchange",
+	[SNDRV_SEQ_EVENT_CHANPRESS]	= "chanpress",
+	[SNDRV_SEQ_EVENT_PITCHBEND]	= "pitchbend",
+	[SNDRV_SEQ_EVENT_CONTROL14]	= "control14",
+	[SNDRV_SEQ_EVENT_NONREGPARAM]	= "nonregparam",
+	[SNDRV_SEQ_EVENT_REGPARAM]	= "regparam",
+
+	/* snd_seq_ev_ctrl */
+	[SNDRV_SEQ_EVENT_SONGPOS]	= "songpos",
+	[SNDRV_SEQ_EVENT_SONGSEL]	= "songsel",
+	[SNDRV_SEQ_EVENT_QFRAME]	= "qframe",
+	[SNDRV_SEQ_EVENT_TIMESIGN]	= "timesign",
+	[SNDRV_SEQ_EVENT_KEYSIGN]	= "keysign",
+
+	/* snd_seq_ev_queue_control */
+	[SNDRV_SEQ_EVENT_START]		= "start",
+	[SNDRV_SEQ_EVENT_CONTINUE]	= "continue",
+	[SNDRV_SEQ_EVENT_STOP]		= "stop",
+	[SNDRV_SEQ_EVENT_SETPOS_TICK]	= "setpos-tick",
+	[SNDRV_SEQ_EVENT_SETPOS_TIME]	= "setpos-time",
+	[SNDRV_SEQ_EVENT_TEMPO]		= "tempo",
+	[SNDRV_SEQ_EVENT_CLOCK]		= "clock",
+	[SNDRV_SEQ_EVENT_TICK]		= "tick",
+	[SNDRV_SEQ_EVENT_QUEUE_SKEW]	= "queue-skew",
+
+	/* no data */
+	[SNDRV_SEQ_EVENT_TUNE_REQUEST]	= "tune-request",
+	[SNDRV_SEQ_EVENT_RESET]		= "reset",
+	[SNDRV_SEQ_EVENT_SENSING]	= "sensing",
+
+	/* any data */
+	[SNDRV_SEQ_EVENT_ECHO]		= "echo",
+	[SNDRV_SEQ_EVENT_OSS]		= "oss",
+
+	/* snd_seq_addr */
+	[SNDRV_SEQ_EVENT_CLIENT_START]	= "client-start",
+	[SNDRV_SEQ_EVENT_CLIENT_EXIT]	= "client-exit",
+	[SNDRV_SEQ_EVENT_CLIENT_CHANGE]	= "client-change",
+	[SNDRV_SEQ_EVENT_PORT_START]	= "port-start",
+	[SNDRV_SEQ_EVENT_PORT_EXIT]	= "port-exit",
+	[SNDRV_SEQ_EVENT_PORT_CHANGE]	= "port-change",
+
+	/* snd_seq_connect */
+	[SNDRV_SEQ_EVENT_PORT_SUBSCRIBED]	= "port-subscribed",
+	[SNDRV_SEQ_EVENT_PORT_UNSUBSCRIBED]	= "port-unsubscribed",
+
+	/* any data */
+	[SNDRV_SEQ_EVENT_USR0]		= "user0",
+	[SNDRV_SEQ_EVENT_USR1]		= "user1",
+	[SNDRV_SEQ_EVENT_USR2]		= "user2",
+	[SNDRV_SEQ_EVENT_USR3]		= "user3",
+	[SNDRV_SEQ_EVENT_USR4]		= "user4",
+	[SNDRV_SEQ_EVENT_USR5]		= "user5",
+	[SNDRV_SEQ_EVENT_USR6]		= "user6",
+	[SNDRV_SEQ_EVENT_USR7]		= "user7",
+	[SNDRV_SEQ_EVENT_USR8]		= "user8",
+	[SNDRV_SEQ_EVENT_USR9]		= "user9",
+
+	/* snd_seq_ev_ext */
+	[SNDRV_SEQ_EVENT_SYSEX]		= "sysex",
+	[SNDRV_SEQ_EVENT_BOUNCE]	= "bounce",
+
+	[SNDRV_SEQ_EVENT_USR_VAR0]	= "user-var0",
+	[SNDRV_SEQ_EVENT_USR_VAR1]	= "user-var1",
+	[SNDRV_SEQ_EVENT_USR_VAR2]	= "user-var2",
+	[SNDRV_SEQ_EVENT_USR_VAR3]	= "user-var3",
+	[SNDRV_SEQ_EVENT_USR_VAR4]	= "user-var4",
+
+	[SNDRV_SEQ_EVENT_NONE]		= "none",
+};
+
 static void read_messages(ALSASeqClientPrivate *priv)
 {
 	struct snd_seq_event *ev = &priv->read_ev;
@@ -515,10 +598,10 @@ static void read_messages(ALSASeqClientPrivate *priv)
 
 			/* TODO: delivery data */
 			g_signal_emit_by_name(G_OBJECT(port), "event",
-				ev->type, ev->flags, ev->tag, ev->queue,
-				ev->time.time.tv_sec, ev->time.time.tv_nsec,
-				ev->source.client, ev->source.port,
-				NULL);
+				ev_names[ev->type], ev->flags, ev->tag,
+				ev->queue, ev->time.time.tv_sec,
+				ev->time.time.tv_nsec, ev->source.client,
+				ev->source.port, NULL);
 		}
 		g_mutex_unlock(&priv->lock);
 	}

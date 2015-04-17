@@ -323,9 +323,9 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 		     G_SIGNAL_RUN_LAST,
 		     0,
 		     NULL, NULL,
-		     alsaseq_sigs_marshal_VOID__INT_UINT_CHAR_UCHAR_UINT_UINT_UCHAR_UCHAR,
+		     alsaseq_sigs_marshal_VOID__STRING_UINT_CHAR_UCHAR_UINT_UINT_UCHAR_UCHAR,
 		     G_TYPE_NONE, 8,
-		     G_TYPE_INT, G_TYPE_UINT, G_TYPE_CHAR, G_TYPE_UCHAR,
+		     G_TYPE_STRING, G_TYPE_UINT, G_TYPE_CHAR, G_TYPE_UCHAR,
 		     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UCHAR, G_TYPE_UCHAR);
 }
 

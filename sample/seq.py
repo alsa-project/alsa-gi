@@ -60,10 +60,10 @@ for i in range(len(my_ports)):
 client.update()
 print(' {0} ports in this client.'.format(client.get_property('ports')))
 
-def handle_event(port, type, flags, tag, queue, sec, nsec, src_client, src_port):
+def handle_event(port, name, flags, tag, queue, sec, nsec, src_client, src_port):
     print(' Event occur:')
 
-    print('  type:      {0}'.format(type))
+    print('  name:      {0}'.format(name))
     print('  flags:     {0}'.format(flags))
     print('  tag:       {0}'.format(tag))
     print('  queue:     {0}'.format(queue))
