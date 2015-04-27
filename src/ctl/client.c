@@ -44,9 +44,6 @@ struct _ALSACtlClientPrivate {
 	int fd;
 };
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlClient, alsactl_client, G_TYPE_OBJECT)
-#define CTL_CLIENT_GET_PRIVATE(obj)					\
-	(G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				ALSACTL_TYPE_CLIENT, ALSACtlClientPrivate))
 
 enum ctl_client_prop_type {
 	CTL_CLIENT_PROP_NAME = 1,
@@ -58,6 +55,7 @@ static GParamSpec *ctl_client_props[CTL_CLIENT_PROP_COUNT] = {NULL, };
 /* This object has one signal. */
 enum ctl_client_sig_type {
 	CTL_CLIENT_SIG_ADDED = 0,
+	CTL_CLIENT_SIG_INSERT,
 	CTL_CLIENT_SIG_COUNT,
 };
 static guint ctl_client_sigs[CTL_CLIENT_SIG_COUNT] = { 0 };
@@ -90,7 +88,7 @@ static void ctl_client_dispose(GObject *obj)
 static void ctl_client_finalize(GObject *obj)
 {
 	ALSACtlClient *self = ALSACTL_CLIENT(obj);
-	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
 
 	alsactl_client_unlisten(self);
 	close(priv->fd);
@@ -139,8 +137,8 @@ static void alsactl_client_class_init(ALSACtlClientClass *klass)
 
 static void alsactl_client_init(ALSACtlClient *self)
 {
-	self->priv = alsactl_client_get_instance_private(self);
-	self->priv->elems = NULL;
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
+	priv->elems = NULL;
 }
 
 /**
@@ -156,7 +154,7 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 	ALSACtlClientPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	priv->fd = open(path, O_RDONLY | O_NONBLOCK);
 	if (priv->fd < 0) {
@@ -235,7 +233,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 	unsigned int i, count;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	/* Check the size of element in given list. */
 	if (g_array_get_element_size(list) != sizeof(guint)) {
@@ -257,7 +255,7 @@ end:
 
 static void insert_to_link_list(ALSACtlClient *self, ALSACtlElem *elem)
 {
-	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
 
 	/* This element has a reference to this client for some operations. */
 	g_object_ref(self);
@@ -295,7 +293,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	unsigned int i, count;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	allocate_elem_ids(priv, &elem_list, exception);
 	if (*exception != NULL)
@@ -375,7 +373,7 @@ static void add_elems(ALSACtlClient *self, GType type,
 		      struct snd_ctl_elem_id *id, unsigned int number,
 		      GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(self);
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
 	struct snd_ctl_elem_info info = {{0}};
 	ALSACtlElem *elem;
 	unsigned int i;
@@ -440,7 +438,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
@@ -489,7 +487,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, iface, number, name, channels, exception);
 	if (*exception)
@@ -535,7 +533,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
@@ -603,7 +601,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, iface, number, name, channels, exception);
 	if (*exception != NULL)
@@ -640,7 +638,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, iface, number, name, 1, exception);
 	if (*exception != NULL)
@@ -665,7 +663,7 @@ void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem)
 	GList *entry;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	g_mutex_lock(&priv->lock);
 	for (entry = priv->elems; entry != NULL; entry = entry->next) {
@@ -690,7 +688,7 @@ static gboolean prepare_src(GSource *src, gint *timeout)
 static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 			      struct snd_ctl_elem_id *id)
 {
-	ALSACtlClientPrivate *priv = CTL_CLIENT_GET_PRIVATE(client);
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(client);
 	GList *entry;
 	ALSACtlElem *elems;
 
@@ -759,7 +757,7 @@ static gboolean check_src(GSource *gsrc)
 
 	if (!ALSACTL_IS_CLIENT(client))
 		goto end;
-	priv = CTL_CLIENT_GET_PRIVATE(client);
+	priv = alsactl_client_get_instance_private(client);
 
 	len = read(priv->fd, &priv->event, sizeof(priv->event));
 	if (len < 0) {
@@ -804,7 +802,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	int subscribe;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	src = g_source_new(&funcs, sizeof(CtlClientSource));
 	if (src == NULL) {
@@ -837,7 +835,7 @@ void alsactl_client_unlisten(ALSACtlClient *self)
 	ALSACtlClientPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = CTL_CLIENT_GET_PRIVATE(self);
+	priv = alsactl_client_get_instance_private(self);
 
 	if (priv->src == NULL)
 		return;

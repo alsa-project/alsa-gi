@@ -22,9 +22,6 @@ struct _ALSACtlElemPrivate {
 	struct snd_ctl_elem_info info;
 };
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
-#define CTL_ELEM_GET_PRIVATE(obj)					\
-	(G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				ALSACTL_TYPE_ELEM, ALSACtlElemPrivate))
 
 enum ctl_elem_prop_type {
 	CTL_ELEM_PROP_FD = 1,
@@ -61,7 +58,7 @@ static void ctl_elem_get_property(GObject *obj, guint id,
 				     GValue *val, GParamSpec *spec)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
-	ALSACtlElemPrivate *priv = CTL_ELEM_GET_PRIVATE(self);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
 
 	switch (id) {
 	case CTL_ELEM_PROP_TYPE:
@@ -123,7 +120,7 @@ static void ctl_elem_set_property(GObject *obj, guint id,
 				     const GValue *val, GParamSpec *spec)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
-	ALSACtlElemPrivate *priv = CTL_ELEM_GET_PRIVATE(self);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
 
 	switch (id) {
 	/* These should be set by constructor. */
@@ -156,7 +153,7 @@ static void ctl_elem_set_property(GObject *obj, guint id,
 static void ctl_elem_dispose(GObject *obj)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
-	ALSACtlElemPrivate *priv = CTL_ELEM_GET_PRIVATE(self);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
 	GError *exception = NULL;
 
 	/* Leave ownership to release this elemset. */
@@ -328,7 +325,7 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 
 static void alsactl_elem_init(ALSACtlElem *self)
 {
-	self->priv = alsactl_elem_get_instance_private(self);
+	return;
 }
 
 void alsactl_elem_update(ALSACtlElem *self, GError **exception)
@@ -342,7 +339,7 @@ void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
-	priv = CTL_ELEM_GET_PRIVATE(self);
+	priv = alsactl_elem_get_instance_private(self);
 
 	id = &priv->info.id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
@@ -357,7 +354,7 @@ void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
-	priv = CTL_ELEM_GET_PRIVATE(self);
+	priv = alsactl_elem_get_instance_private(self);
 
 	id = &priv->info.id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
@@ -373,7 +370,7 @@ void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
 	ALSACtlElemPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
-	priv = CTL_ELEM_GET_PRIVATE(self);
+	priv = alsactl_elem_get_instance_private(self);
 
 	elem_val->id.numid = priv->info.id.numid;
 	if (ioctl(priv->fd, cmd, elem_val) < 0)
@@ -386,7 +383,7 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 	ALSACtlElemPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
-	priv = CTL_ELEM_GET_PRIVATE(self);
+	priv = alsactl_elem_get_instance_private(self);
 
 	info->id.numid = priv->info.id.numid;
 

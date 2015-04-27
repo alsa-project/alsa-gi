@@ -27,15 +27,12 @@ struct _ALSACtlElemEnumPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemEnum, alsactl_elem_enum,
 			   ALSACTL_TYPE_ELEM)
-#define CTL_ELEM_ENUM_GET_PRIVATE(obj)					\
-	(G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				     ALSACTL_TYPE_ELEM_ENUM,		\
-				     ALSACtlElemEnumPrivate))
 
 static void ctl_elem_enum_dispose(GObject *obj)
 {
 	ALSACtlElemEnum *self = ALSACTL_ELEM_ENUM(obj);
-	ALSACtlElemEnumPrivate *priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	ALSACtlElemEnumPrivate *priv =
+				alsactl_elem_enum_get_instance_private(self);
 
 	g_slice_free1(CHARS_PER_LABEL * LABELS_PER_ELEM, priv->strings);
 
@@ -57,7 +54,7 @@ static void elem_enum_update(ALSACtlElem *parent, GError **exception)
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(parent));
 	self = ALSACTL_ELEM_ENUM(parent);
-	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	priv = alsactl_elem_enum_get_instance_private(self);
 	strings = priv->strings;
 
 	/* Get the count of items. */
@@ -92,13 +89,14 @@ static void alsactl_elem_enum_class_init(ALSACtlElemEnumClass *klass)
 
 static void alsactl_elem_enum_init(ALSACtlElemEnum *self)
 {
-	self->priv = alsactl_elem_enum_get_instance_private(self);
+	ALSACtlElemEnumPrivate *priv =
+				alsactl_elem_enum_get_instance_private(self);
 
 	/*
 	 * The maximum length of each item is 64 characters.
 	 * The maximum number of items in one element is 1024 entries.
 	 */
-	self->priv->strings = (char (*)[CHARS_PER_LABEL])
+	priv->strings = (char (*)[CHARS_PER_LABEL])
 			g_slice_alloc0(CHARS_PER_LABEL * LABELS_PER_ELEM);
 }
 
@@ -118,7 +116,7 @@ void alsactl_elem_enum_get_labels(ALSACtlElemEnum *self, GArray *labels,
 	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
-	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	priv = alsactl_elem_enum_get_instance_private(self);
 	strings = priv->strings;
 
 	for (i = 0; i < priv->labels_count; i++) {
@@ -163,7 +161,7 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
 	unsigned int channels;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
-	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	priv = alsactl_elem_enum_get_instance_private(self);
 
 	if ((values == NULL) ||
 	    (g_array_get_element_size(values) != sizeof(gpointer))) {
@@ -225,7 +223,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
 	unsigned int channels;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
-	priv = CTL_ELEM_ENUM_GET_PRIVATE(self);
+	priv = alsactl_elem_enum_get_instance_private(self);
 
 	if ((values == NULL) ||
 	    (g_array_get_element_size(values) != sizeof(gpointer)) ||

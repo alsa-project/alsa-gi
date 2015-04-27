@@ -49,9 +49,6 @@ struct _ALSASeqClientPrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqClient, alsaseq_client, G_TYPE_OBJECT)
-#define SEQ_CLIENT_GET_PRIVATE(obj)					\
-        (G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				     ALSASEQ_TYPE_CLIENT, ALSASeqClientPrivate))
 
 /* TODO: Event filter. */
 
@@ -80,7 +77,7 @@ static void seq_client_get_property(GObject *obj, guint id,
 				    GValue *val, GParamSpec *spec)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 
 	switch (id) {
 	/* client information */
@@ -133,7 +130,7 @@ static void seq_client_set_property(GObject *obj, guint id,
 				    const GValue *val, GParamSpec *spec)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 
 	switch (id) {
 	case SEQ_CLIENT_PROP_NAME:
@@ -176,7 +173,7 @@ static void seq_client_dispose(GObject *obj)
 static void seq_client_finalize(GObject *obj)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 
 	/* TODO: drop messages in my pool. */
 	close(priv->fd);
@@ -269,9 +266,11 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 
 static void alsaseq_client_init(ALSASeqClient *self)
 {
-	self->priv = alsaseq_client_get_instance_private(self);
-	self->priv->ports = NULL;
-	g_mutex_init(&self->priv->lock);
+	ALSASeqClientPrivate *priv;
+
+	priv = alsaseq_client_get_instance_private(self);
+	priv->ports = NULL;
+	g_mutex_init(&priv->lock);
 }
 
 void alsaseq_client_open(ALSASeqClient *self, gchar *path, const gchar *name,
@@ -281,7 +280,7 @@ void alsaseq_client_open(ALSASeqClient *self, gchar *path, const gchar *name,
 	int id;
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	/* Always open duplex ports. */
 	priv->fd = open(path, O_RDWR | O_NONBLOCK);
@@ -323,7 +322,7 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 	ALSASeqClientPrivate *priv;
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	/* Set client info. */
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_CLIENT_INFO, &priv->info) < 0) {
@@ -361,7 +360,7 @@ void alsaseq_client_update(ALSASeqClient *self, GError **exception)
 static ALSASeqPort *add_port(ALSASeqClient *self,
 			     struct snd_seq_port_info *info)
 {
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 	ALSASeqPort *port;
 
 	port = g_object_new(ALSASEQ_TYPE_PORT,
@@ -394,7 +393,7 @@ ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 	struct snd_seq_port_info info = {{0}};
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	/* Add new port to this client. */
 	info.addr.client = priv->info.client;
@@ -419,7 +418,7 @@ void alsaseq_client_close_port(ALSASeqClient *self, ALSASeqPort *port)
 	GList *entry;
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	g_mutex_lock(&priv->lock);
 	for (entry = priv->ports; entry != NULL; entry = entry->next) {
@@ -446,7 +445,7 @@ void alsaseq_client_get_ports(ALSASeqClient *self, GArray *ports,
 	struct snd_seq_port_info info = {{0}};
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	info.addr.client = priv->info.client;
 	info.addr.port = -1;
@@ -610,7 +609,7 @@ static void read_messages(ALSASeqClientPrivate *priv)
 
 			g_object_get_property(G_OBJECT(port), "id", &val);
 			if (priv->read_ev[i].dest.port != g_value_get_int(&val))
-				break;
+				continue;
 
 			deliver_event(port, &priv->read_ev[i]);
 		}
@@ -624,7 +623,7 @@ static gboolean check_src(GSource *gsrc)
 	GIOCondition condition;
 
 	ALSASeqClient *self = src->self;
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 
 	condition = g_source_query_unix_fd((GSource *)src, src->tag);
 
@@ -643,7 +642,7 @@ static gboolean dispatch_src(GSource *gsrc, GSourceFunc callback,
 {
 	SeqClientSource *src = (SeqClientSource *)gsrc;
 	ALSASeqClient *self = src->self;
-	ALSASeqClientPrivate *priv = SEQ_CLIENT_GET_PRIVATE(self);
+	ALSASeqClientPrivate *priv = alsaseq_client_get_instance_private(self);
 	GIOCondition condition;
 
 	/* Decide next event to wait for. */
@@ -675,7 +674,7 @@ void alsaseq_client_listen(ALSASeqClient *self, GError **exception)
 	GSource *src;
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	priv->write_buf = g_malloc(BUFFER_SIZE);
 	if (priv->write_buf == NULL) {
@@ -710,7 +709,7 @@ void alsaseq_client_unlisten(ALSASeqClient *self)
 	ALSASeqClientPrivate *priv;
 
 	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
-	priv = SEQ_CLIENT_GET_PRIVATE(self);
+	priv = alsaseq_client_get_instance_private(self);
 
 	if (priv->src == NULL)
 		return;

@@ -30,9 +30,6 @@ struct _ALSASeqPortPrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqPort, alsaseq_port, G_TYPE_OBJECT)
-#define SEQ_PORT_GET_PRIVATE(obj)					\
-        (G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				     ALSASEQ_TYPE_PORT, ALSASeqPortPrivate))
 
 enum seq_port_prop {
 	SEQ_PORT_PROP_FD = 1,
@@ -65,7 +62,7 @@ static void seq_port_get_property(GObject *obj, guint id,
 				  GValue *val, GParamSpec *spec)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
-	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
+	ALSASeqPortPrivate *priv = alsaseq_port_get_instance_private(self);
 
 	switch (id) {
 	case SEQ_PORT_PROP_ID:
@@ -121,7 +118,7 @@ static void seq_port_set_property(GObject *obj, guint id,
 				  const GValue *val, GParamSpec *spec)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
-	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
+	ALSASeqPortPrivate *priv = alsaseq_port_get_instance_private(self);
 
 	switch (id) {
 	case SEQ_PORT_PROP_FD:
@@ -187,7 +184,7 @@ static void seq_port_dispose(GObject *obj)
 static void seq_port_finalize(GObject *obj)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
-	ALSASeqPortPrivate *priv = SEQ_PORT_GET_PRIVATE(self);
+	ALSASeqPortPrivate *priv = alsaseq_port_get_instance_private(self);
 
 	/* Close this port. */
 	ioctl(priv->fd, SNDRV_SEQ_IOCTL_DELETE_PORT, &priv->info);
@@ -208,7 +205,7 @@ static GObject *seq_port_construct(GType type, guint count,
 	obj = G_OBJECT_CLASS(alsaseq_port_parent_class)->constructor(type,
 								count, props);
 	self = ALSASEQ_PORT(obj);
-	priv = SEQ_PORT_GET_PRIVATE(self);
+	priv = alsaseq_port_get_instance_private(self);
 
 	/* Cannot handle this error... */
 	ioctl(priv->fd, SNDRV_SEQ_IOCTL_GET_PORT_INFO, &priv->info);
@@ -331,7 +328,7 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 
 static void alsaseq_port_init(ALSASeqPort *self)
 {
-	self->priv = alsaseq_port_get_instance_private(self);
+	return;
 }
 
 /**
@@ -347,7 +344,7 @@ void alsaseq_port_update(ALSASeqPort *self, GError **exception)
 	ALSASeqPortPrivate *priv;
 
 	g_return_if_fail(ALSASEQ_IS_PORT(self));
-	priv = SEQ_PORT_GET_PRIVATE(self);
+	priv = alsaseq_port_get_instance_private(self);
 
 	if (ioctl(priv->fd, SNDRV_SEQ_IOCTL_SET_PORT_INFO, &priv->info) < 0)
 		raise(exception, errno);

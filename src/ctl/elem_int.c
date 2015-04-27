@@ -24,10 +24,6 @@ struct _ALSACtlElemIntPrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemInt, alsactl_elem_int, ALSACTL_TYPE_ELEM)
-#define CTL_ELEM_INT_GET_PRIVATE(obj)					\
-	(G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				     ALSACTL_TYPE_ELEM_INT,		\
-				     ALSACtlElemIntPrivate))
 
 static void ctl_elem_int_dispose(GObject *obj)
 {
@@ -47,7 +43,7 @@ static void elem_int_update(ALSACtlElem *parent, GError **exception)
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(parent));
 	self = ALSACTL_ELEM_INT(parent);
-	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+	priv = alsactl_elem_int_get_instance_private(self);
 
 	alsactl_elem_info_ioctl(parent, &info, exception);
 	if (*exception != NULL)
@@ -91,7 +87,7 @@ void alsactl_elem_int_get_max(ALSACtlElemInt *self, unsigned int *max)
 	ALSACtlElemIntPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
-	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+	priv = alsactl_elem_int_get_instance_private(self);
 
 	*max = priv->max;
 }
@@ -107,7 +103,7 @@ void alsactl_elem_int_get_min(ALSACtlElemInt *self, unsigned int *min)
 	ALSACtlElemIntPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
-	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+	priv = alsactl_elem_int_get_instance_private(self);
 
 	*min = priv->min;
 }
@@ -123,7 +119,7 @@ void alsactl_elem_int_get_step(ALSACtlElemInt *self, unsigned int *step)
 	ALSACtlElemIntPrivate *priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
-	priv = CTL_ELEM_INT_GET_PRIVATE(self);
+	priv = alsactl_elem_int_get_instance_private(self);
 
 	*step = priv->step;
 }

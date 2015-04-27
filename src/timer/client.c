@@ -41,10 +41,6 @@ struct _ALSATimerClientPrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSATimerClient, alsatimer_client, G_TYPE_OBJECT)
-#define TIMER_CLIENT_GET_PRIVATE(obj)					\
-        (G_TYPE_INSTANCE_GET_PRIVATE((obj),				\
-				     ALSATIMER_TYPE_CLIENT,		\
-				     ALSATimerClientPrivate))
 
 enum timer_client_prop {
 	/* snd_timer_info_t */
@@ -75,7 +71,8 @@ static void timer_client_get_property(GObject *obj, guint id,
 				      GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv =
+				alsatimer_client_get_instance_private(self);
 
 	switch (id) {
 	case TIMER_CLIENT_PROP_ID:
@@ -125,7 +122,8 @@ static void timer_client_set_property(GObject *obj, guint id,
 				      const GValue *val, GParamSpec *spec)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv =
+				alsatimer_client_get_instance_private(self);
 
 	switch(id) {
 	case TIMER_CLIENT_PROP_AUTO_START:
@@ -169,7 +167,8 @@ static void timer_client_dispose(GObject *obj)
 static void timer_client_finalize(GObject *obj)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv =
+				alsatimer_client_get_instance_private(self);
 
 	close(priv->fd);
 
@@ -263,7 +262,7 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
 
 static void alsatimer_client_init(ALSATimerClient *self)
 {
-	self->priv = alsatimer_client_get_instance_private(self);
+	return;
 }
 
 /**
@@ -281,7 +280,7 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
 	int flag = 1;
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	priv->fd = open(path, O_RDONLY);
 	if (priv->fd < 0) {
@@ -332,7 +331,7 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
 	struct snd_timer_ginfo info ={{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	id.dev_class = SNDRV_TIMER_CLASS_NONE;
 	while (1) {
@@ -372,7 +371,7 @@ void alsatimer_client_select_timer(ALSATimerClient *self,
 	struct snd_timer_select target = {{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	target.id.dev_class = class;
 	target.id.dev_sclass = subclass;
@@ -414,7 +413,7 @@ void alsatimer_client_get_status(ALSATimerClient *self, GArray *status,
 	struct snd_timer_status s = {{0}};
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STATUS, &s) < 0) {
 		raise(exception, errno);
@@ -462,7 +461,8 @@ static gboolean check_src(GSource *gsrc)
 	GIOCondition condition;
 
 	ALSATimerClient *self = src->self;
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv =
+				alsatimer_client_get_instance_private(self);
 
 	struct snd_timer_tread *ev;
 	ssize_t len;
@@ -510,7 +510,8 @@ static void listen_client(ALSATimerClient *self, GError **exception)
 		.dispatch	= dispatch_src,
 		.finalize	= finalize_src,
 	};
-	ALSATimerClientPrivate *priv = TIMER_CLIENT_GET_PRIVATE(self);
+	ALSATimerClientPrivate *priv =
+				alsatimer_client_get_instance_private(self);
 	GSource *src;
 
 	/* Keep a memory so as to store 10 events. */
@@ -547,7 +548,7 @@ static void unlisten_client(ALSATimerClient *self)
 	ALSATimerClientPrivate *priv;
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	g_source_destroy((GSource *)priv->src);
 	g_free(priv->src);
@@ -562,7 +563,7 @@ void alsatimer_client_start(ALSATimerClient *self, GError **exception)
 	ALSATimerClientPrivate *priv;
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
 		raise(exception, errno);
@@ -584,7 +585,7 @@ void alsatimer_client_stop(ALSATimerClient *self, GError **exception)
 	ALSATimerClientPrivate *priv;
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_STOP) < 0) {
 		raise(exception, errno);
@@ -598,7 +599,7 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
 	ALSATimerClientPrivate *priv;
 
 	g_return_if_fail(ALSATIMER_IS_CLIENT(self));
-	priv = TIMER_CLIENT_GET_PRIVATE(self);
+	priv = alsatimer_client_get_instance_private(self);
 
 	if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_PARAMS, &priv->params) < 0) {
 		raise(exception, errno);
