@@ -342,8 +342,12 @@ end:
 }
 
 static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
-		      const gchar *name, guint count, GError **exception)
+		      const gchar *name, guint count, const GArray *dimen,
+		      GError **exception)
 {
+	unsigned int i;
+	unsigned int val;
+
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
 		raise(exception, EINVAL);
@@ -360,6 +364,22 @@ static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
 		return;
 	}
 	strcpy((char *)info->id.name, name);
+
+	/* Check the number of elements in the array for dimension. */
+	if (dimen != NULL) {
+		if (dimen->len > G_N_ELEMENTS(info->dimen.d)) {
+			raise(exception, EINVAL);
+			return;
+		}
+		for (i = 0; i < dimen->len; i++) {
+			val = g_array_index(dimen, gushort, i);
+			if (val > count) {
+				raise(exception, EINVAL);
+				return;
+			}
+			info->dimen.d[i] = val;
+		}
+	}
 
 	info->access = SNDRV_CTL_ELEM_ACCESS_USER |
 		       SNDRV_CTL_ELEM_ACCESS_READ |
@@ -422,6 +442,7 @@ static void add_elems(ALSACtlClient *self, GType type,
  * @min: the minimum value for elements in new element
  * @max: the maximum value for elements in new element
  * @step: the step of value for elements in new element
+ * @dimen: (element-type gushort) (array) (in) (nullable): dimension array with 4 elements
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): element array added by this operation
  * @exception: A #GError
  *
@@ -429,8 +450,8 @@ static void add_elems(ALSACtlClient *self, GType type,
 void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 				  guint number, const gchar *name,
 				  guint channels, guint64 min, guint64 max,
-				  guint step, GArray *elems,
-				  GError **exception)
+				  guint step, const GArray *dimen,
+				  GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
@@ -438,7 +459,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, exception);
+	init_info(&info, iface, number, name, channels, dimen, exception);
 	if (*exception != NULL)
 		return;
 
@@ -472,14 +493,15 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
  * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @channels: the number of values in each element
+ * @dimen: (element-type gushort) (array) (in) (nullable): dimension array with 4 elements
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
  */
 void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint channels, GArray *elems,
-				   GError **exception)
+				   guint channels, const GArray *dimen,
+				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
@@ -487,7 +509,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, exception);
+	init_info(&info, iface, number, name, channels, dimen, exception);
 	if (*exception)
 		return;
 
@@ -512,12 +534,14 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  * @name: the name of new elements
  * @channels: the number of values in each element
  * @items: (element-type utf8): (array) (in): string items for each items
+ * @dimen: (element-type gushort) (array) (in) (nullable): dimension array with 4 elements
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  */
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
 				   guint channels, GArray *items,
+				   const GArray *dimen,
 				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
@@ -531,7 +555,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, exception);
+	init_info(&info, iface, number, name, channels, dimen, exception);
 	if (*exception != NULL)
 		return;
 
@@ -584,14 +608,15 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
  * @number: the number of elements added by this operation
  * @name: the name of new elements
  * @channels: the number of values in each element
+ * @dimen: (element-type gushort) (array) (in) (nullable): dimension array with 4 elements
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
  *
  */
 void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   guint number, const gchar *name,
-				   guint channels, GArray *elems,
-				   GError **exception)
+				   guint channels, const GArray *dimen,
+				   GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
@@ -599,7 +624,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, exception);
+	init_info(&info, iface, number, name, channels, dimen, exception);
 	if (*exception != NULL)
 		return;
 
@@ -636,7 +661,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, 1, exception);
+	init_info(&info, iface, number, name, 1, NULL, exception);
 	if (*exception != NULL)
 		return;
 

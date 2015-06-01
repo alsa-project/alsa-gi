@@ -20,6 +20,7 @@ G_DEFINE_QUARK("ALSACtlElem", alsactl_elem)
 struct _ALSACtlElemPrivate {
 	int fd;
 	struct snd_ctl_elem_info info;
+	GArray *dimen;
 };
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
 
@@ -41,6 +42,7 @@ enum ctl_elem_prop_type {
 	CTL_ELEM_PROP_LOCKED,
 	CTL_ELEM_PROP_IS_OWNED,
 	CTL_ELEM_PROP_IS_USER,
+	CTL_ELEM_PROP_DIMENSION,
 	CTL_ELEM_PROP_COUNT,
 };
 static GParamSpec *ctl_elem_props[CTL_ELEM_PROP_COUNT] = { NULL, };
@@ -110,6 +112,9 @@ static void ctl_elem_get_property(GObject *obj, guint id,
 		g_value_set_boolean(val,
 			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_USER));
 		break;
+	case CTL_ELEM_PROP_DIMENSION:
+		g_value_set_static_boxed(val, priv->dimen);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
 		break;
@@ -164,6 +169,8 @@ static void ctl_elem_dispose(GObject *obj)
 	/* Remove this element as long as no processes owns. */
 	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
 		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
+
+	g_array_free(priv->dimen, TRUE);
 
 	alsactl_client_remove_elem(self->_client, self);
 
@@ -278,6 +285,12 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 			"Whether this elment set is added by userland or not",
 				     FALSE,
 				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_DIMENSION] =
+		g_param_spec_boxed("dimension", "dimension",
+				   "When channels construct matrix, return an"
+				   "array filled with elements in each level",
+				   G_TYPE_ARRAY,
+				   G_PARAM_READABLE);
 	g_object_class_install_properties(gobject_class,
 					  CTL_ELEM_PROP_COUNT,
 					  ctl_elem_props);
@@ -325,7 +338,9 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 
 static void alsactl_elem_init(ALSACtlElem *self)
 {
-	return;
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+	priv->dimen = g_array_sized_new(FALSE, TRUE, sizeof(gushort),
+					G_N_ELEMENTS(priv->info.dimen.d));
 }
 
 void alsactl_elem_update(ALSACtlElem *self, GError **exception)
@@ -381,6 +396,7 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 			     GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
@@ -401,4 +417,9 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 
 	/* Copy updated information. */
 	priv->info = *info;
+
+	/* Update dimension information. */
+	g_array_set_size(priv->dimen, 0);
+	for (i = 0; i < G_N_ELEMENTS(priv->info.dimen.d); i++)
+		g_array_insert_val(priv->dimen, i, priv->info.dimen.d[i]);
 }

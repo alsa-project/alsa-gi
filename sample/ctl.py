@@ -72,7 +72,7 @@ elements.extend(elems)
 name = 'enum-element-{0}'.format(time.strftime('%S'))
 items = ('lucid', 'maverick', 'natty', 'oneiric', 'precise')
 try:
-    elems = client.add_enum_elems(2, 4, name, 6, items)
+    elems = client.add_enum_elems(2, 4, name, 6, items, (3, 2))
     for elem in elems:
         elem.unlock()
         print(elem.get_labels())
@@ -87,7 +87,7 @@ except Exception as e:
 # Add my byte elements
 name = 'byte-element-{0}'.format(time.strftime('%S'))
 try:
-    elems = client.add_byte_elems(2, 5, name, 4)
+    elems = client.add_byte_elems(2, 5, name, 4, (1, 2, 2))
     for elem in elems:
         vals = elem.read()
         print(vals)
@@ -119,7 +119,7 @@ except Exception as e:
 # Print element and its properties
 properties = ('id', 'type', 'iface', 'device', 'subdevice', 'channels',
               'readable', 'writable', 'volatile', 'inactive', 'locked',
-              'is-owned', 'is-user')
+              'is-owned', 'is-user', 'dimension')
 for i in element_list:
     try:
         element = client.get_elem(i);
