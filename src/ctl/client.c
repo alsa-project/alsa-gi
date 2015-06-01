@@ -145,8 +145,6 @@ static void alsactl_client_init(ALSACtlClient *self)
  * alsactl_client_open:
  * @path: a path for the special file of ALSA control device
  * @exception: A #GError
- *
- * Returns: (transfer full): A #ALSACtlClient
  */
 void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 			 GError **exception)
@@ -516,8 +514,6 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
  * @items: (element-type utf8): (array) (in): string items for each items
  * @elems: (element-type ALSACtlElem) (array) (out caller-allocates) (transfer container): hoge
  * @exception: A #GError
- *
- * Returns: (transfer full): A #ALSACtlElem
  */
 void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   guint number,  const gchar *name,
