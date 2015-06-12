@@ -22,7 +22,7 @@ struct _ALSACtlElemPrivate {
 	struct snd_ctl_elem_info info;
 	GArray *dimen;
 };
-G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
 
 enum ctl_elem_prop_type {
 	CTL_ELEM_PROP_FD = 1,
