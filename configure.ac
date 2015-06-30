@@ -48,14 +48,6 @@ GOBJECT_INTROSPECTION_REQUIRE([1.32.1])
 GTK_DOC_CHECK([1.18-2])
 
 
-# ALSA library is required.
-PKG_CHECK_MODULES(ASOUNDLIB, [ alsa >= 1.0.27 ], HAVE_ASOUNDLIB=yes, HAVE_ASOUNDLIB=no)
-AS_IF([ test "x$HAVE_ASOUNDLIB" = "xno" ],
-      [AC_MSG_ERROR([ *** ALSA library support not found])])
-AC_SUBST(ASOUNDLIB_CFLAGS)
-AC_SUBST(ASOUNDLIB_LIBS)
-
-
 #
 # ALSA Sequencer interface support
 #
@@ -189,12 +181,11 @@ echo "
 	GOBJECT-2.0:					${HAVE_GOBJECT20}
 	GObject Introspection:				${found_introspection}
 
-	ALSA library support:				${HAVE_ASOUNDLIB}
-		card interface support:			true
-		sequencer interface support:		${sequencer}
-		rawmidi interface support:		${rawmidi}
-		hwdep interface support:		${hwdep}
-		control interface support:		${control}
-		PCM interface support:			${pcm}
-		compress offload interface support:	${compress}
+	ALSA card interface support:			true
+	ALSA sequencer interface support:		${sequencer}
+	ALSA rawmidi interface support:			${rawmidi}
+	ALSA hwdep interface support:			${hwdep}
+	ALSA control interface support:			${control}
+	ALSA PCM interface support:			${pcm}
+	ALSA compress offload interface support:	${compress}
 "
