@@ -19,22 +19,9 @@ G_DEFINE_QUARK("ALSACtlElemBool", alsactl_elem_bool)
 
 G_DEFINE_TYPE(ALSACtlElemBool, alsactl_elem_bool, ALSACTL_TYPE_ELEM)
 
-static void ctl_elem_bool_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsactl_elem_bool_parent_class)->dispose(obj);
-}
-
-static void ctl_elem_bool_finalize(GObject *obj)
-{
-	G_OBJECT_CLASS(alsactl_elem_bool_parent_class)->finalize(obj);
-}
-
 static void alsactl_elem_bool_class_init(ALSACtlElemBoolClass *klass)
 {
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-
-	gobject_class->dispose = ctl_elem_bool_dispose;
-	gobject_class->finalize = ctl_elem_bool_finalize;
+	return;
 }
 
 static void alsactl_elem_bool_init(ALSACtlElemBool *self)

@@ -176,11 +176,6 @@ static void seq_port_set_property(GObject *obj, guint id,
 	}
 }
 
-static void seq_port_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsaseq_port_parent_class)->dispose(obj);
-}
-
 static void seq_port_finalize(GObject *obj)
 {
 	ALSASeqPort *self = ALSASEQ_PORT(obj);
@@ -219,7 +214,6 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
 
 	gobject_class->get_property = seq_port_get_property;
 	gobject_class->set_property = seq_port_set_property;
-	gobject_class->dispose = seq_port_dispose;
 	gobject_class->finalize = seq_port_finalize;
 	gobject_class->constructor = seq_port_construct;
 

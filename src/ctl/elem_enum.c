@@ -28,7 +28,7 @@ struct _ALSACtlElemEnumPrivate {
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemEnum, alsactl_elem_enum,
 			   ALSACTL_TYPE_ELEM)
 
-static void ctl_elem_enum_dispose(GObject *obj)
+static void ctl_elem_enum_finalize(GObject *obj)
 {
 	ALSACtlElemEnum *self = ALSACTL_ELEM_ENUM(obj);
 	ALSACtlElemEnumPrivate *priv =
@@ -36,11 +36,6 @@ static void ctl_elem_enum_dispose(GObject *obj)
 
 	g_slice_free1(CHARS_PER_LABEL * LABELS_PER_ELEM, priv->strings);
 
-	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->dispose(obj);
-}
-
-static void ctl_elem_enum_finalize(GObject *obj)
-{
 	G_OBJECT_CLASS(alsactl_elem_enum_parent_class)->finalize(obj);
 }
 
@@ -83,7 +78,6 @@ static void alsactl_elem_enum_class_init(ALSACtlElemEnumClass *klass)
 	/* Override parent method. */
 	ALSACTL_ELEM_CLASS(klass)->update = elem_enum_update;
 	
-	gobject_class->dispose = ctl_elem_enum_dispose;
 	gobject_class->finalize = ctl_elem_enum_finalize;
 }
 

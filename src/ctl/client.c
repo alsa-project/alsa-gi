@@ -80,11 +80,6 @@ static void ctl_client_set_property(GObject *obj, guint id,
 	G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
 }
 
-static void ctl_client_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsactl_client_parent_class)->dispose(obj);
-}
-
 static void ctl_client_finalize(GObject *obj)
 {
 	ALSACtlClient *self = ALSACTL_CLIENT(obj);
@@ -103,7 +98,6 @@ static void alsactl_client_class_init(ALSACtlClientClass *klass)
 
 	gobject_class->get_property = ctl_client_get_property;
 	gobject_class->set_property = ctl_client_set_property;
-	gobject_class->dispose = ctl_client_dispose;
 	gobject_class->finalize = ctl_client_finalize;
 
 	ctl_client_props[CTL_CLIENT_PROP_NAME] =

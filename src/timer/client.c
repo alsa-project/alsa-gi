@@ -159,11 +159,6 @@ static void timer_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void timer_client_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsatimer_client_parent_class)->dispose(obj);
-}
-
 static void timer_client_finalize(GObject *obj)
 {
 	ALSATimerClient *self = ALSATIMER_CLIENT(obj);
@@ -181,7 +176,6 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
 
 	gobject_class->get_property = timer_client_get_property;
 	gobject_class->set_property = timer_client_set_property;
-	gobject_class->dispose = timer_client_dispose;
 	gobject_class->finalize = timer_client_finalize;
 
 	timer_client_props[TIMER_CLIENT_PROP_ID] = 

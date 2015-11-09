@@ -155,7 +155,7 @@ static void ctl_elem_set_property(GObject *obj, guint id,
 	}
 }
 
-static void ctl_elem_dispose(GObject *obj)
+static void ctl_elem_finalize(GObject *obj)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
 	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
@@ -174,11 +174,6 @@ static void ctl_elem_dispose(GObject *obj)
 
 	alsactl_client_remove_elem(self->_client, self);
 
-	G_OBJECT_CLASS(alsactl_elem_parent_class)->dispose(obj);
-}
-
-static void ctl_elem_finalize(GObject *obj)
-{
 	G_OBJECT_CLASS(alsactl_elem_parent_class)->finalize(obj);
 }
 
@@ -200,7 +195,6 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 
 	gobject_class->get_property = ctl_elem_get_property;
 	gobject_class->set_property = ctl_elem_set_property;
-	gobject_class->dispose = ctl_elem_dispose;
 	gobject_class->finalize = ctl_elem_finalize;
 
 	ctl_elem_props[CTL_ELEM_PROP_FD] =

@@ -165,11 +165,6 @@ static void seq_client_set_property(GObject *obj, guint id,
 	}
 }
 
-static void seq_client_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsaseq_client_parent_class)->dispose(obj);
-}
-
 static void seq_client_finalize(GObject *obj)
 {
 	ALSASeqClient *self = ALSASEQ_CLIENT(obj);
@@ -187,7 +182,6 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
 
 	gobject_class->get_property = seq_client_get_property;
 	gobject_class->set_property = seq_client_set_property;
-	gobject_class->dispose = seq_client_dispose;
 	gobject_class->finalize = seq_client_finalize;
 
 	seq_client_props[SEQ_CLIENT_PROP_ID] =

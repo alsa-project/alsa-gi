@@ -25,16 +25,6 @@ struct _ALSACtlElemIntPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(ALSACtlElemInt, alsactl_elem_int, ALSACTL_TYPE_ELEM)
 
-static void ctl_elem_int_dispose(GObject *obj)
-{
-	G_OBJECT_CLASS(alsactl_elem_int_parent_class)->dispose(obj);
-}
-
-static void ctl_elem_int_finalize(GObject *obj)
-{
-	G_OBJECT_CLASS(alsactl_elem_int_parent_class)->finalize(obj);
-}
-
 static void elem_int_update(ALSACtlElem *parent, GError **exception)
 {
 	ALSACtlElemInt *self;
@@ -62,13 +52,8 @@ static void elem_int_update(ALSACtlElem *parent, GError **exception)
 
 static void alsactl_elem_int_class_init(ALSACtlElemIntClass *klass)
 {
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-
 	/* Override parent method. */
 	ALSACTL_ELEM_CLASS(klass)->update = elem_int_update;
-
-	gobject_class->dispose = ctl_elem_int_dispose;
-	gobject_class->finalize = ctl_elem_int_finalize;
 }
 
 static void alsactl_elem_int_init(ALSACtlElemInt *self)
