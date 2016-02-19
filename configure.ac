@@ -1,191 +1,73 @@
-AC_PREREQ(2.65)
+# my versioning
+m4_define([my_major], [0])
+m4_define([my_minor], [1])
+m4_define([my_micro], [0])
+m4_define([my_version],    [my_major.my_minor.my_revision])
 
-AC_INIT([alsa-gir], [1.0.0], [o-takashi@sakamocchi.jp])
+# Use -version option for libtool
+m4_define([my_current], [m4_eval(my_minor * 10 + my_micro)])
+m4_define([my_revision],[my_major])
+m4_define([my_age],     [my_current])
+m4_define([my_iface],    [my_current:my_revision:my_age])
+
+# Autoconf 2.62 is bootstrapped with Automake 1.10.1.
+# https://lists.gnu.org/archive/html/autotools-announce/2008-04/msg00002.html
+AC_PREREQ(2.62)
+# Initialize Autoconf
+AC_INIT([libhinawa], [my_version], [o-takashi@sakamocchi.jp])
+# The directory for helper scripts
 AC_CONFIG_AUX_DIR([config])
+# The directory for M4 macros
 AC_CONFIG_MACRO_DIR([m4])
 
+# The directory for sources
 AC_CONFIG_SRCDIR([src])
+# The header for variables with AC_DEFINE
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.13 foreign -Wno-portability])
+# Automake 1.10 or later
+# GObject Introspection uses GNU Make-specific functionality.
+AM_INIT_AUTOMAKE([1.10.1  -Wno-portability])
+# Don't output command lines
 AM_SILENT_RULES([yes])
 
-PKG_PROG_PKG_CONFIG
-AC_PROG_CC
+# GNU libtool 2.2.6 is bootstrapped with Automake 1.10.1 and Autoconf 2.62.
+# https://lists.gnu.org/archive/html/autotools-announce/2008-09/msg00000.html
+LT_PREREQ(2.2.6)
+# Initialize GNU libtool
 LT_INIT
+# Define library version
+LT_IFACE="my_iface"
+AC_SUBST(LT_IFACE)
 
+# Detect C language compiler
+AC_PROG_CC
 
-#
-# GLIB 2.0 is required.
-#
-PKG_CHECK_MODULES(GLIB20, [ glib-2.0 >= 2.34 ], HAVE_GLIB20="yes", HAVE_GLIB20="no")
-AS_IF([ test "x$HAVE_GLIB20" = "xno" ],
-      [AC_MSG_ERROR([ *** Glib 2.0 support not found])])
-AC_SUBST(GLIB20_CFLAGS)
-AC_SUBST(GLIB20_LIBS)
+# Glib 2.34 or later
+AM_PATH_GLIB_2_0([2.34.0], [], [], [gobject])
 
+# Detect C language compiler
+AC_PROG_CC
 
-#
-# GLIB's gobject 2.0 is required.
-#
-PKG_CHECK_MODULES(GOBJECT, [ gobject-2.0 ], HAVE_GOBJECT20=yes, HAVE_GOBJECT20=yes)
-AS_IF([ test "x$HAVE_GOBJECT20" = "xno" ],
-      [AC_MSG_ERROR([ *** GObject 2.0 support not found])])
-AC_SUBST(GOBJECT20_CFLAGS)
-AC_SUBST(GOBJECT20_LIBS)
-AM_PATH_GLIB_2_0([2.32.4], [], [], [gobject])
+# Glib 2.34 or later
+AM_PATH_GLIB_2_0([2.34.0], [], [], [gobject])
 
-
-#
-# Gobject Introspection support is required.
-#
-GOBJECT_INTROSPECTION_REQUIRE([1.32.1])
-
-
-#
-# GTK Documentation is required.
-#
+# GTK-Doc 1.18-2 or later
 GTK_DOC_CHECK([1.18-2])
 
-
-#
-# ALSA Sequencer interface support
-#
-AC_ARG_ENABLE([sequencer],
-	      AS_HELP_STRING([--disable-sequencer],
-			     [Disable ALSA sequencer interface support]),
-			     [case "${enableval}" in
-				yes) sequencer=true  ;;
-				no)  sequencer=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-sequencer) ;;
-			     esac],
-			     [sequencer=true])
-AM_CONDITIONAL(ENABLE_SEQUENCER, test "x$sequencer" = "xtrue")
-
-
-#
-# ALSA timer interface support
-#
-AC_ARG_ENABLE([timer],
-	      AS_HELP_STRING([--disable-timer],
-			     [Disable ALSA timer interface support]),
-			     [case "${enableval}" in
-				yes) timer=true  ;;
-				no)  timer=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-timer) ;;
-			     esac],
-			     [timer=true])
-AM_CONDITIONAL(ENABLE_TIMER, test "x$timer" = "xtrue")
-
-
-#
-# ALSA control interface support
-#
-AC_ARG_ENABLE([control],
-	      AS_HELP_STRING([--disable-control],
-			     [Disable ALSA control interface support]),
-			     [case "${enableval}" in
-				yes) control=true  ;;
-				no)  control=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-control) ;;
-			     esac],
-			     [control=true])
-AM_CONDITIONAL(ENABLE_CONTROL, test "x$control" = "xtrue")
-
-
-#
-# ALSA rawmidi interface support
-#
-AC_ARG_ENABLE([rawmidi],
-	      AS_HELP_STRING([--disable-rawmidi],
-			     [Disable ALSA rawmidi interface support]),
-			     [case "${enableval}" in
-				yes) rawmidi=true  ;;
-				no)  rawmidi=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-rawmidi) ;;
-			     esac],
-			     [rawmidi=false])
-AM_CONDITIONAL(ENABLE_RAWMIDI, test "x$rawmidi" = "xtrue")
-
-
-#
-# ALSA hwdep interface support
-#
-AC_ARG_ENABLE([hwdep],
-	      AS_HELP_STRING([--disable-hwdep],
-			     [Disable ALSA hwdep interface support]),
-			     [case "${enableval}" in
-				yes) hwdep=true  ;;
-				no)  hwdep=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-hwdep) ;;
-			     esac],
-			     [hwdep=false])
-AM_CONDITIONAL(ENABLE_HWDEP, test "x$hwdep" = "xtrue")
-
-
-#
-# ALSA PCM interface support
-#
-AC_ARG_ENABLE([pcm],
-	      AS_HELP_STRING([--disable-pcm],
-			     [Disable ALSA PCM interface support]),
-			     [case "${enableval}" in
-				yes) pcm=true  ;;
-				no)  pcm=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-pcm) ;;
-			     esac],
-			     [pcm=false])
-AM_CONDITIONAL(ENABLE_PCM, test "x$pcm" = "xtrue")
-
-
-#
-# ALSA compress offload interface support
-#
-AC_ARG_ENABLE([compress],
-	      AS_HELP_STRING([--disable-compress],
-			     [Disable ALSA compress offload interface support]),
-			     [case "${enableval}" in
-				yes) compress=true  ;;
-				no)  compress=false ;;
-				*)   AC_MSG_ERROR(invalid value ${enableval} for --disable-compress) ;;
-			     esac],
-			     [compress=false])
-AM_CONDITIONAL(ENABLE_COMPRESS, test "x$compress" = "xtrue")
-
+# GObject introspection 1.32.1 or later
+GOBJECT_INTROSPECTION_REQUIRE([1.32.1])
 
 AC_CONFIG_FILES([
-  Makefile
-  src/Makefile
-  src/card/Makefile
-  src/seq/Makefile
-  src/timer/Makefile
-  src/ctl/Makefile
-  doc/Makefile
-  doc/reference/Makefile
-  doc/reference/version.xml
+    Makefile
+    src/Makefile
+    src/card/Makefile
+    src/seq/Makefile
+    src/timer/Makefile
+    src/ctl/Makefile
+    doc/Makefile
+    doc/reference/Makefile
+    doc/reference/version.xml
 ])
 
 AC_OUTPUT
-
-# ==========================================================================
-echo "
- ---{ $PACKAGE_NAME $VERSION }---
-
-	prefix:						${prefix}
-	sysconfdir:					${sysconfdir}
-	localstatedir:					${localstatedir}
-	C Compiler:					${CC}
-	CFLAGS:						${CFLAGS}
-
-	GLIB-2.0:					${HAVE_GLIB20}
-	GOBJECT-2.0:					${HAVE_GOBJECT20}
-	GObject Introspection:				${found_introspection}
-
-	ALSA card interface support:			true
-	ALSA sequencer interface support:		${sequencer}
-	ALSA rawmidi interface support:			${rawmidi}
-	ALSA hwdep interface support:			${hwdep}
-	ALSA control interface support:			${control}
-	ALSA PCM interface support:			${pcm}
-	ALSA compress offload interface support:	${compress}
-"
