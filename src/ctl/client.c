@@ -284,7 +284,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	struct snd_ctl_elem_info info = {{0}};
 	unsigned int i, count;
 
-	g_return_if_fail(ALSACTL_IS_CLIENT(self));
+	g_return_val_if_fail(ALSACTL_IS_CLIENT(self), NULL);
 	priv = alsactl_client_get_instance_private(self);
 
 	allocate_elem_ids(priv, &elem_list, exception);

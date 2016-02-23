@@ -386,7 +386,7 @@ ALSASeqPort *alsaseq_client_open_port(ALSASeqClient *self, const gchar *name,
 	ALSASeqClientPrivate *priv;
 	struct snd_seq_port_info info = {{0}};
 
-	g_return_if_fail(ALSASEQ_IS_CLIENT(self));
+	g_return_val_if_fail(ALSASEQ_IS_CLIENT(self), NULL);
 	priv = alsaseq_client_get_instance_private(self);
 
 	/* Add new port to this client. */
