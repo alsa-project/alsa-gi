@@ -1,4 +1,4 @@
-GObject introspection library for ALSA userspace library
+GObject introspection library for ALSA kernel/userspace interface.
 
 Requirements:
 - Linux with ALSA
