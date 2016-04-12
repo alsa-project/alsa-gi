@@ -7,15 +7,16 @@ AM_CPPFLAGS =					\
 
 AM_CFLAGS =					\
 	$(GLIB_CFLAGS)				\
-	$(GIO_CFLAGS)				\
 	-Wall
 
 lib_LTLIBRARIES =				\
 	libalsatimer.la
 
+libalsatimer_la_LDFLAGS =			\
+	-version-info $(LT_IFACE)
+
 libalsatimer_la_LIBADD =			\
-	$(GLIB_LIBS)				\
-	$(GIO_LIBS)
+	$(GLIB_LIBS)
 
 libalsatimer_la_SOURCES =			\
 	alsatimer_sigs_marshal.h		\

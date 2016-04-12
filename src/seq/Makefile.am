@@ -7,15 +7,16 @@ AM_CPPFLAGS =					\
 
 AM_CFLAGS =					\
 	$(GLIB_CFLAGS)				\
-	$(GIO_CFLAGS)				\
 	-Wall
 
 lib_LTLIBRARIES =				\
 	libalsaseq.la
 
+libalsaseq_la_LDFLAGS =				\
+	-version-info $(LT_IFACE)
+
 libalsaseq_la_LIBADD =				\
-	$(GLIB_LIBS)				\
-	$(GIO_LIBS)
+	$(GLIB_LIBS)
 
 libalsaseq_la_SOURCES =				\
 	alsaseq_sigs_marshal.h			\

@@ -7,15 +7,16 @@ AM_CPPFLAGS =					\
 
 AM_CFLAGS =					\
 	$(GLIB_CFLAGS)				\
-	$(GIO_CFLAGS)				\
 	-Wall
 
 lib_LTLIBRARIES =				\
 	libalsactl.la
 
+libalsactl_la_LDFLAGS =				\
+	-version-info $(LT_IFACE)
+
 libalsactl_la_LIBADD =				\
-	$(GLIB_LIBS)				\
-	$(GIO_LIBS)
+	$(GLIB_LIBS)
 
 libalsactl_la_SOURCES =				\
 	alsactl_sigs_marshal.h			\
