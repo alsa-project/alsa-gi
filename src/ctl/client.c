@@ -195,6 +195,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 			raise(exception, errno);
 			free(list->pids);
 			list->pids = NULL;
+			return;
 		}
 
 		list->offset += list->space;
