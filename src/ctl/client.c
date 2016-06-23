@@ -400,6 +400,12 @@ static void add_elems(ALSACtlClient *self, GType type,
 	ALSACtlElem *elem;
 	unsigned int i;
 
+	/* Add this elements. */
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, info) < 0) {
+		raise(exception, errno);
+		return;
+	}
+
 	/* To get proper numeric ID, sigh... */
 	/* TODO: fix upstream. ELEM_ADD ioctl should fill enough info! */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0) {
@@ -456,12 +462,10 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 				  guint step, const GArray *dimen,
 				  GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
 	snd_ctl_elem_type_t type;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	if (max > UINT_MAX)
 		type = SNDRV_CTL_ELEM_TYPE_INTEGER64;
@@ -480,12 +484,6 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	info.value.integer.min = min;
 	info.value.integer.max = max;
 	info.value.integer.step = step;
-
-	/* Add this elements. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		raise(exception, errno);
-		return;
-	}
 
 	add_elems(self, ALSACTL_TYPE_ELEM_INT, &info, number, elems,
 		  exception);
@@ -508,22 +506,14 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 				   guint channels, const GArray *dimen,
 				   GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, SNDRV_CTL_ELEM_TYPE_BOOLEAN, iface, number, name,
 		  channels, dimen, exception);
 	if (*exception != NULL)
 		return;
-
-	/* Add this elements. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		raise(exception, errno);
-		return;
-	}
 
 	add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info, number, elems,
 		  exception);
@@ -547,16 +537,13 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 				   const GArray *dimen,
 				   GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
 	unsigned int i;
 	unsigned int len;
 	char *buf;
 	gchar *label;
-	int err;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, SNDRV_CTL_ELEM_TYPE_ENUMERATED, iface, number, name,
 		  channels, dimen, exception);
@@ -592,14 +579,6 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 		buf += strlen(label) + 1;
 	}
 
-	/* Add this elements. */
-	err = ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info);
-	free((void *)info.value.enumerated.names_ptr);
-	if (err < 0) {
-		raise(exception, errno);
-		return;
-	}
-
 	add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info, number, elems,
 		  exception);
 }
@@ -621,22 +600,14 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 				   guint channels, const GArray *dimen,
 				   GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, SNDRV_CTL_ELEM_TYPE_BYTES, iface, number, name,
 		  channels, dimen, exception);
 	if (*exception != NULL)
 		return;
-
-	/* Add this elements. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		raise(exception, errno);
-		return;
-	}
 
 	add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info, number, elems,
 		  exception);
@@ -656,22 +627,14 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 				       guint number, const gchar *name,
 				       GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	init_info(&info, SNDRV_CTL_ELEM_TYPE_IEC958, iface, number, name, 1,
 		  NULL, exception);
 	if (*exception != NULL)
 		return;
-
-	/* Add this elements. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
-		raise(exception, errno);
-		return;
-	}
 
 	add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info, number, elems,
 		  exception);
