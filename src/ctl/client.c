@@ -336,12 +336,21 @@ end:
 	return elem;
 }
 
-static void init_info(struct snd_ctl_elem_info *info, gint iface, guint number,
+static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
+		      snd_ctl_elem_iface_t iface, guint number,
 		      const gchar *name, guint count, const GArray *dimen,
 		      GError **exception)
 {
 	unsigned int i;
 	unsigned int val;
+
+	/* Check element type. */
+	if (type < SNDRV_CTL_ELEM_TYPE_BOOLEAN ||
+	    type >= SNDRV_CTL_ELEM_TYPE_LAST) {
+		raise(exception, EINVAL);
+		return;
+	}
+	info->type = type;
 
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
@@ -450,19 +459,21 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_info info = {{0}};
+	snd_ctl_elem_type_t type;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, dimen, exception);
+	if (max > UINT_MAX)
+		type = SNDRV_CTL_ELEM_TYPE_INTEGER64;
+	else
+		type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
+	init_info(&info, type, iface, number, name, channels, dimen, exception);
 	if (*exception != NULL)
 		return;
 
 	/* Type-specific information. */
-	if (max > UINT_MAX)
-		info.type = SNDRV_CTL_ELEM_TYPE_INTEGER64;
-	else
-		info.type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	if (min >= max || (max - min) % step) {
 		raise(exception, EINVAL);
 		return;
@@ -504,12 +515,10 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, dimen, exception);
-	if (*exception)
+	init_info(&info, SNDRV_CTL_ELEM_TYPE_BOOLEAN, iface, number, name,
+		  channels, dimen, exception);
+	if (*exception != NULL)
 		return;
-
-	/* Type-specific information. */
-	info.type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
@@ -550,12 +559,12 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, dimen, exception);
+	init_info(&info, SNDRV_CTL_ELEM_TYPE_ENUMERATED, iface, number, name,
+		  channels, dimen, exception);
 	if (*exception != NULL)
 		return;
 
 	/* Type-specific information. */
-	info.type = SNDRV_CTL_ELEM_TYPE_ENUMERATED;
 	info.value.enumerated.items = items->len;
 
 	/* Calcurate total length of items. */
@@ -619,12 +628,10 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, channels, dimen, exception);
+	init_info(&info, SNDRV_CTL_ELEM_TYPE_BYTES, iface, number, name,
+		  channels, dimen, exception);
 	if (*exception != NULL)
 		return;
-
-	/* Type-specific information. */
-	info.type = SNDRV_CTL_ELEM_TYPE_BYTES;
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
@@ -656,12 +663,10 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
-	init_info(&info, iface, number, name, 1, NULL, exception);
+	init_info(&info, SNDRV_CTL_ELEM_TYPE_IEC958, iface, number, name, 1,
+		  NULL, exception);
 	if (*exception != NULL)
 		return;
-
-	/* Type-specific information. */
-	info.type = SNDRV_CTL_ELEM_TYPE_IEC958;
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, &info) < 0) {
