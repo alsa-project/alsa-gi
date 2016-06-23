@@ -392,22 +392,21 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
 }
 
 static void add_elems(ALSACtlClient *self, GType type,
-		      struct snd_ctl_elem_id *id, unsigned int number,
+		      struct snd_ctl_elem_info *info, unsigned int number,
 		      GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
-	struct snd_ctl_elem_info info = {{0}};
+	struct snd_ctl_elem_id *id;
 	ALSACtlElem *elem;
 	unsigned int i;
 
 	/* To get proper numeric ID, sigh... */
 	/* TODO: fix upstream. ELEM_ADD ioctl should fill enough info! */
-	info.id = *id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0) {
 		raise(exception, errno);
 		return;
 	}
-	*id = info.id;
+	id = &info->id;
 
 	/* Keep the new instance for this element. */
 	for (i = 0; i < number; i++) {
@@ -488,7 +487,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 		return;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_INT, &info.id, number, elems,
+	add_elems(self, ALSACTL_TYPE_ELEM_INT, &info, number, elems,
 		  exception);
 }
 
@@ -526,7 +525,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 		return;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info.id, number, elems,
+	add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info, number, elems,
 		  exception);
 }
 
@@ -601,7 +600,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 		return;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info.id, number, elems,
+	add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info, number, elems,
 		  exception);
 }
 
@@ -639,7 +638,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 		return;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info.id, number, elems,
+	add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info, number, elems,
 		  exception);
 }
 
@@ -674,7 +673,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 		return;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info.id, number, elems,
+	add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info, number, elems,
 		  exception);
 }
 
