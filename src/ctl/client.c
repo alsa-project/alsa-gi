@@ -245,72 +245,23 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 	deallocate_elem_ids(&elem_list);
 }
 
-static void insert_to_link_list(ALSACtlClient *self, ALSACtlElem *elem)
-{
-	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
-
-	/* This element has a reference to this client for some operations. */
-	g_object_ref(self);
-
-	/* Add this element to the list in this client. */
-	g_mutex_lock(&priv->lock);
-	priv->elems = g_list_append(priv->elems, elem);
-	g_mutex_unlock(&priv->lock);
-}
-
-/**
- * alsactl_client_get_elem:
- * @self: A #ALSACtlClient
- * @numid: the numerical id for the element
- * @exception: A #GError
- *
- * Returns: (transfer full): A #ALSACtlElem
- */
-ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
-				     GError **exception)
+static ALSACtlElem *insert_elem_to_cache(ALSACtlClient *self,
+					 snd_ctl_elem_type_t type,
+					 struct snd_ctl_elem_id *id,
+					 GError **exception)
 {
 	GType types[] = {
-		[SNDRV_CTL_ELEM_TYPE_BOOLEAN] = ALSACTL_TYPE_ELEM_BOOL,
-		[SNDRV_CTL_ELEM_TYPE_INTEGER] = ALSACTL_TYPE_ELEM_INT,
+		[SNDRV_CTL_ELEM_TYPE_BOOLEAN]	= ALSACTL_TYPE_ELEM_BOOL,
+		[SNDRV_CTL_ELEM_TYPE_INTEGER]	= ALSACTL_TYPE_ELEM_INT,
 		[SNDRV_CTL_ELEM_TYPE_ENUMERATED] = ALSACTL_TYPE_ELEM_ENUM,
-		[SNDRV_CTL_ELEM_TYPE_BYTES] = ALSACTL_TYPE_ELEM_BYTE,
-		[SNDRV_CTL_ELEM_TYPE_IEC958] = ALSACTL_TYPE_ELEM_IEC60958,
+		[SNDRV_CTL_ELEM_TYPE_BYTES]	= ALSACTL_TYPE_ELEM_BYTE,
+		[SNDRV_CTL_ELEM_TYPE_IEC958]	= ALSACTL_TYPE_ELEM_IEC60958,
 		[SNDRV_CTL_ELEM_TYPE_INTEGER64] = ALSACTL_TYPE_ELEM_INT,
 	};
-	ALSACtlClientPrivate *priv;
-	ALSACtlElem *elem = NULL;
-	struct snd_ctl_elem_list elem_list;
-	struct snd_ctl_elem_id *id;
-	struct snd_ctl_elem_info info = {{0}};
-	unsigned int i, count;
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
+	ALSACtlElem *elem;
 
-	g_return_val_if_fail(ALSACTL_IS_CLIENT(self), NULL);
-	priv = alsactl_client_get_instance_private(self);
-
-	allocate_elem_ids(priv, &elem_list, exception);
-	if (*exception != NULL)
-		return NULL;
-	count = elem_list.count;
-
-	/* Seek a element indicated by the numerical ID. */
-	for (i = 0; i < count; i++) {
-		if (elem_list.pids[i].numid == numid)
-			break;
-	}
-	if (i == count) {
-		raise(exception, ENODEV);
-		goto end;
-	}
-	id = &elem_list.pids[i];
-
-	info.id = *id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
-		raise(exception, errno);
-		goto end;
-	}
-
-	/* Keep the new instance for this element. */
-	elem = g_object_new(types[info.type],
+	elem = g_object_new(types[type],
 			    "fd", priv->fd,
 			    "id", id->numid,
 			    "iface", id->iface,
@@ -324,12 +275,60 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	alsactl_elem_update(elem, exception);
 	if (*exception != NULL) {
 		g_clear_object(&elem);
-		elem = NULL;
-		goto end;
+		return NULL;
 	}
 
 	/* Insert this element to the list in this client. */
-	insert_to_link_list(self, elem);
+	g_mutex_lock(&priv->lock);
+	priv->elems = g_list_append(priv->elems, elem);
+	g_mutex_unlock(&priv->lock);
+
+	return elem;
+}
+
+/**
+ * alsactl_client_get_elem:
+ * @self: A #ALSACtlClient
+ * @numid: the numerical id for the element
+ * @exception: A #GError
+ *
+ * Returns: (transfer full): A #ALSACtlElem
+ */
+ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
+				     GError **exception)
+{
+	ALSACtlClientPrivate *priv;
+	ALSACtlElem *elem = NULL;
+	struct snd_ctl_elem_list elem_list;
+	struct snd_ctl_elem_id *id;
+	struct snd_ctl_elem_info info = {{0}};
+	unsigned int i;
+
+	g_return_val_if_fail(ALSACTL_IS_CLIENT(self), NULL);
+	priv = alsactl_client_get_instance_private(self);
+
+	allocate_elem_ids(priv, &elem_list, exception);
+	if (*exception != NULL)
+		return NULL;
+
+	/* Seek a element indicated by the numerical ID. */
+	for (i = 0; i < elem_list.count; i++) {
+		if (elem_list.pids[i].numid == numid)
+			break;
+	}
+	if (i == elem_list.count) {
+		raise(exception, ENODEV);
+		goto end;
+	}
+	id = &elem_list.pids[i];
+
+	info.id = *id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
+		raise(exception, errno);
+		goto end;
+	}
+
+	elem = insert_elem_to_cache(self, info.type, id, exception);
 end:
 	deallocate_elem_ids(&elem_list);
 	return elem;
@@ -391,11 +390,11 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
 }
 
 static void add_elems(ALSACtlClient *self, GType type,
-		      struct snd_ctl_elem_info *info, unsigned int number,
+		      struct snd_ctl_elem_info *info, unsigned int elem_count,
 		      GArray *elems, GError **exception)
 {
 	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
-	struct snd_ctl_elem_id *id;
+	struct snd_ctl_elem_id id;
 	ALSACtlElem *elem;
 	unsigned int i;
 
@@ -405,38 +404,20 @@ static void add_elems(ALSACtlClient *self, GType type,
 		return;
 	}
 
-	/* To get proper numeric ID, sigh... */
-	/* TODO: fix upstream. ELEM_ADD ioctl should fill enough info! */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0) {
-		raise(exception, errno);
-		return;
-	}
-	id = &info->id;
-
 	/* Keep the new instance for this element. */
-	for (i = 0; i < number; i++) {
-		elem = g_object_new(type,
-				    "fd", priv->fd,
-				    "id", id->numid + i,
-				    "iface", id->iface,
-				    "device", id->device,
-				    "subdevice", id->subdevice,
-				    "name", id->name,
-				    NULL);
-		elem->_client = g_object_ref(self);
-
-		/* Update the element information. */
-		alsactl_elem_update(elem, exception);
+	for (i = 0; i < elem_count; i++) {
+		id = info->id;
+		id.numid += i;
+		id.index += i;
+		elem = insert_elem_to_cache(self, type, &id, exception);
 		if (*exception != NULL) {
-			g_clear_object(&elem);
-			return;
+			/* Cacheed objects are released by I/O handler. */
+			ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &info->id);
+			break;
 		}
 
 		/* Insert into given array. */
 		g_array_insert_val(elems, i, elem);
-
-		/* Insert this element to the list in this client. */
-		insert_to_link_list(self, elem);
 	}
 }
 
@@ -484,8 +465,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 	info.value.integer.max = max;
 	info.value.integer.step = step;
 
-	add_elems(self, ALSACTL_TYPE_ELEM_INT, &info, number, elems,
-		  exception);
+	add_elems(self, type, &info, number, elems, exception);
 }
 
 /**
@@ -514,7 +494,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 	if (*exception != NULL)
 		return;
 
-	add_elems(self, ALSACTL_TYPE_ELEM_BOOL, &info, number, elems,
+	add_elems(self, SNDRV_CTL_ELEM_TYPE_BOOLEAN, &info, number, elems,
 		  exception);
 }
 
@@ -578,7 +558,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 		buf += strlen(label) + 1;
 	}
 
-	add_elems(self, ALSACTL_TYPE_ELEM_ENUM, &info, number, elems,
+	add_elems(self, SNDRV_CTL_ELEM_TYPE_ENUMERATED, &info, number, elems,
 		  exception);
 }
 
@@ -608,7 +588,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 	if (*exception != NULL)
 		return;
 
-	add_elems(self, ALSACTL_TYPE_ELEM_BYTE, &info, number, elems,
+	add_elems(self, SNDRV_CTL_ELEM_TYPE_BYTES, &info, number, elems,
 		  exception);
 }
 
@@ -635,7 +615,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 	if (*exception != NULL)
 		return;
 
-	add_elems(self, ALSACTL_TYPE_ELEM_IEC60958, &info, number, elems,
+	add_elems(self, SNDRV_CTL_ELEM_TYPE_IEC958, &info, number, elems,
 		  exception);
 }
 
