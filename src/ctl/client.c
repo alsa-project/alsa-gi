@@ -816,12 +816,17 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 void alsactl_client_unlisten(ALSACtlClient *self)
 {
 	ALSACtlClientPrivate *priv;
+	int subscribe;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
 
 	if (priv->src == NULL)
 		return;
+
+	/* Be sure to unsubscribe events. */
+	subscribe = 0;
+	ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe);
 
 	g_source_destroy((GSource *)priv->src);
 	g_free(priv->src);
