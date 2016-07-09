@@ -193,7 +193,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 		/* Get the IDs of elements in this control device. */
 		if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
 			raise(exception, errno);
-			free(list->pids);
+			free(ids);
 			list->pids = NULL;
 			return;
 		}
@@ -223,7 +223,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 {
 	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_list elem_list = {0};
-	unsigned int i, count;
+	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_CLIENT(self));
 	priv = alsactl_client_get_instance_private(self);
@@ -236,13 +236,12 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 
 	allocate_elem_ids(priv, &elem_list, exception);
 	if (*exception != NULL)
-		goto end;
-	count = elem_list.count;
+		return;
 
 	/* Return current 'numid' as ID. */
-	for (i = 0; i < count; i++)
+	for (i = 0; i < elem_list.count; i++)
 		g_array_append_val(list, elem_list.pids[i].numid);
-end:
+
 	deallocate_elem_ids(&elem_list);
 }
 
