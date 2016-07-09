@@ -672,7 +672,7 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 {
 	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(client);
 	GList *entry;
-	ALSACtlElem *elems;
+	ALSACtlElem *elem;
 
 	GValue val = G_VALUE_INIT;
 	unsigned int numid;
@@ -692,11 +692,11 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 	g_mutex_lock(&priv->lock);
 	g_value_init(&val, G_TYPE_UINT);
 	for (entry = priv->elems; entry != NULL; entry = entry->next) {
-		elems = (ALSACtlElem *)entry->data;
-		if (!ALSACTL_IS_ELEM(elems))
+		elem = (ALSACtlElem *)entry->data;
+		if (!ALSACTL_IS_ELEM(elem))
 			continue;
 
-		g_object_get_property(G_OBJECT(elems), "id", &val);
+		g_object_get_property(G_OBJECT(elem), "id", &val);
 		numid = g_value_get_uint(&val);
 
 		/* Here, I check the value of numid only. */
@@ -706,19 +706,19 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
 		/* The mask of remove event is strange, not mask. */
 		if (event == SNDRV_CTL_EVENT_MASK_REMOVE) {
 			priv->elems = g_list_delete_link(priv->elems, entry);
-			g_signal_emit_by_name(G_OBJECT(elems), "removed",
+			g_signal_emit_by_name(G_OBJECT(elem), "removed",
 					      NULL);
 			continue;
 		}
 
 		if (event & SNDRV_CTL_EVENT_MASK_VALUE)
-			g_signal_emit_by_name(G_OBJECT(elems), "changed",
+			g_signal_emit_by_name(G_OBJECT(elem), "changed",
 					      NULL);
 		if (event & SNDRV_CTL_EVENT_MASK_INFO)
-			g_signal_emit_by_name(G_OBJECT(elems), "updated",
+			g_signal_emit_by_name(G_OBJECT(elem), "updated",
 					      NULL);
 		if (event & SNDRV_CTL_EVENT_MASK_TLV)
-			g_signal_emit_by_name(G_OBJECT(elems), "tlv", NULL);
+			g_signal_emit_by_name(G_OBJECT(elem), "tlv", NULL);
 	}
 	g_mutex_unlock(&priv->lock);
 }
