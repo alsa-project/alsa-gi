@@ -38,9 +38,6 @@ typedef struct _ALSACtlClient	ALSACtlClient;
 struct _ALSACtlElem {
 	GObject parent_instance;
 
-	/* These members should be handles as protected properties. */
-	ALSACtlClient *_client;
-
 	ALSACtlElemPrivate *priv;
 };
 

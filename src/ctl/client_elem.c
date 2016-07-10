@@ -262,14 +262,13 @@ static ALSACtlElem *insert_elem_to_cache(ALSACtlClient *self,
 	ALSACtlElem *elem;
 
 	elem = g_object_new(types[type],
-			    "fd", priv->fd,
+			    "client", self,
 			    "id", id->numid,
 			    "iface", id->iface,
 			    "device", id->device,
 			    "subdevice", id->subdevice,
 			    "name", id->name,
 			    NULL);
-	elem->_client = g_object_ref(self);
 
 	/* Update the element information. */
 	alsactl_elem_update(elem, exception);
@@ -633,7 +632,6 @@ void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem)
 			continue;
 
 		priv->elems = g_list_delete_link(priv->elems, entry);
-		g_object_unref(elem->_client);
 	}
 	g_mutex_unlock(&priv->lock);
 }
@@ -819,6 +817,7 @@ G_DEFINE_QUARK("ALSACtlElem", alsactl_elem)
 		    "%d: %s", __LINE__, strerror(errno))
 
 struct _ALSACtlElemPrivate {
+	ALSACtlClient *client;
 	int fd;
 	struct snd_ctl_elem_info info;
 	GArray *dimen;
@@ -826,7 +825,7 @@ struct _ALSACtlElemPrivate {
 G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
 
 enum ctl_elem_prop_type {
-	CTL_ELEM_PROP_FD = 1,
+	CTL_ELEM_PROP_CLIENT = 1,
 	CTL_ELEM_PROP_TYPE,
 	CTL_ELEM_PROP_CHANNELS,
 	/* Identifications */
@@ -930,8 +929,8 @@ static void ctl_elem_set_property(GObject *obj, guint id,
 
 	switch (id) {
 	/* These should be set by constructor. */
-	case CTL_ELEM_PROP_FD:
-		priv->fd = g_value_get_int(val);
+	case CTL_ELEM_PROP_CLIENT:
+		priv->client = g_object_ref(g_value_get_object(val));
 		break;
 	case CTL_ELEM_PROP_NAME:
 		strncpy((char *)priv->info.id.name, g_value_get_string(val),
@@ -960,6 +959,8 @@ static void ctl_elem_finalize(GObject *obj)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
 	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+	ALSACtlClientPrivate *client_priv =
+			alsactl_client_get_instance_private(priv->client);
 	GError *exception = NULL;
 
 	/* Leave ownership to release this elemset. */
@@ -969,11 +970,13 @@ static void ctl_elem_finalize(GObject *obj)
 
 	/* Remove this element as long as no processes owns. */
 	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
-		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
+		ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE,
+		      &priv->info.id);
 
 	g_array_free(priv->dimen, TRUE);
 
-	alsactl_client_remove_elem(self->_client, self);
+	alsactl_client_remove_elem(priv->client, self);
+	g_object_unref(priv->client);
 
 	G_OBJECT_CLASS(alsactl_elem_parent_class)->finalize(obj);
 }
@@ -998,12 +1001,11 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
 	gobject_class->set_property = ctl_elem_set_property;
 	gobject_class->finalize = ctl_elem_finalize;
 
-	ctl_elem_props[CTL_ELEM_PROP_FD] =
-		g_param_spec_int("fd", "fd",
-			"file descriptor for special file of control device",
-			INT_MIN, INT_MAX,
-			-1,
-			G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_CLIENT] =
+		g_param_spec_object("client", "client",
+				    "Instance of client who has this element",
+				    ALSACTL_TYPE_CLIENT,
+				    G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
 	ctl_elem_props[CTL_ELEM_PROP_TYPE] =
 		g_param_spec_int("type", "type",
 				 "The type of this element",
@@ -1146,13 +1148,17 @@ void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	ALSACtlClientPrivate *client_priv;
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
+	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
+	client_priv = alsactl_client_get_instance_private(priv->client);
+
 	id = &priv->info.id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
+	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
 		elem_raise(exception, errno);
 	else
 		alsactl_elem_update(self, exception);
@@ -1161,13 +1167,17 @@ void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	ALSACtlClientPrivate *client_priv;
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
+	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
+	client_priv = alsactl_client_get_instance_private(priv->client);
+
 	id = &priv->info.id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
+	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
 		alsactl_elem_update(self, exception);
 	else if (errno != -EINVAL)
 		elem_raise(exception, errno);
@@ -1178,12 +1188,16 @@ void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
 			      GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	ALSACtlClientPrivate *client_priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
+	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
+	client_priv = alsactl_client_get_instance_private(priv->client);
+
 	elem_val->id.numid = priv->info.id.numid;
-	if (ioctl(priv->fd, cmd, elem_val) < 0)
+	if (ioctl(client_priv->fd, cmd, elem_val) < 0)
 		elem_raise(exception, errno);
 }
 
@@ -1191,14 +1205,18 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 			     GError **exception)
 {
 	ALSACtlElemPrivate *priv;
+	ALSACtlClientPrivate *client_priv;
 	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
+	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
+	client_priv = alsactl_client_get_instance_private(priv->client);
+
 	info->id.numid = priv->info.id.numid;
 
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
+	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
 		elem_raise(exception, errno);
 
 	/*
