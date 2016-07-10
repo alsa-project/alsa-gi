@@ -20,7 +20,7 @@
 
 /* For error handling. */
 G_DEFINE_QUARK("ALSACtlClient", alsactl_client)
-#define raise(exception, errno)						\
+#define client_raise(exception, errno)					\
 	g_set_error(exception, alsactl_client_quark(), errno,		\
 		    "%d: %s", __LINE__, strerror(errno))
 
@@ -150,7 +150,7 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 
 	priv->fd = open(path, O_RDONLY | O_NONBLOCK);
 	if (priv->fd < 0) {
-		raise(exception, errno);
+		client_raise(exception, errno);
 		priv->fd = 0;
 	}
 }
@@ -166,7 +166,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 
 	/* Get the number of elements in this control device. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
-		raise(exception, errno);
+		client_raise(exception, errno);
 		return;
 	}
 
@@ -177,7 +177,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 	/* Allocate spaces for these elements. */
 	ids = calloc(list->count, sizeof(struct snd_ctl_elem_id));
 	if (ids == NULL) {
-		raise(exception, ENOMEM);
+		client_raise(exception, ENOMEM);
 		return;
 	}
 
@@ -192,7 +192,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 
 		/* Get the IDs of elements in this control device. */
 		if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
-			raise(exception, errno);
+			client_raise(exception, errno);
 			free(ids);
 			list->pids = NULL;
 			return;
@@ -230,7 +230,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 
 	/* Check the size of element in given list. */
 	if (g_array_get_element_size(list) != sizeof(guint)) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 
@@ -317,14 +317,14 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 			break;
 	}
 	if (i == elem_list.count) {
-		raise(exception, ENODEV);
+		client_raise(exception, ENODEV);
 		goto end;
 	}
 	id = &elem_list.pids[i];
 
 	info.id = *id;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
-		raise(exception, errno);
+		client_raise(exception, errno);
 		goto end;
 	}
 
@@ -345,14 +345,14 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
 	/* Check element type. */
 	if (type < SNDRV_CTL_ELEM_TYPE_BOOLEAN ||
 	    type >= SNDRV_CTL_ELEM_TYPE_LAST) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 	info->type = type;
 
 	/* Check interface type. */
 	if (iface < 0 || iface >= SNDRV_CTL_ELEM_IFACE_LAST) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 	info->id.iface = iface;
@@ -362,7 +362,7 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
 
 	/* Check eleset name. */
 	if (name == NULL || strlen(name) >= sizeof(info->id.name)) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 	strcpy((char *)info->id.name, name);
@@ -370,13 +370,13 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
 	/* Check the number of elements in the array for dimension. */
 	if (dimen != NULL) {
 		if (dimen->len > G_N_ELEMENTS(info->dimen.d)) {
-			raise(exception, EINVAL);
+			client_raise(exception, EINVAL);
 			return;
 		}
 		for (i = 0; i < dimen->len; i++) {
 			val = g_array_index(dimen, gushort, i);
 			if (val > count) {
-				raise(exception, EINVAL);
+				client_raise(exception, EINVAL);
 				return;
 			}
 			info->dimen.d[i] = val;
@@ -400,7 +400,7 @@ static void add_elems(ALSACtlClient *self, GType type,
 
 	/* Add this elements. */
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, info) < 0) {
-		raise(exception, errno);
+		client_raise(exception, errno);
 		return;
 	}
 
@@ -458,7 +458,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
 
 	/* Type-specific information. */
 	if (min >= max || (max - min) % step) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 	info.value.integer.min = min;
@@ -537,14 +537,14 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 	for (i = 0; i < items->len; i++)
 		len += strlen(g_array_index(items, gchar *, i)) + 1;
 	if (len == 0) {
-		raise(exception, EINVAL);
+		client_raise(exception, EINVAL);
 		return;
 	}
 
 	/* Allocate temporary buffer. */
 	buf = malloc(len);
 	if (buf == NULL) {
-		raise(exception, ENOMEM);
+		client_raise(exception, ENOMEM);
 		return;
 	}
 	memset(buf, 0, len);
@@ -768,7 +768,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 
 	src = g_source_new(&funcs, sizeof(CtlClientSource));
 	if (src == NULL) {
-		raise(exception, ENOMEM);
+		client_raise(exception, ENOMEM);
 		return;
 	}
 
@@ -787,7 +787,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
 	/* Be sure to subscribe events. */
 	subscribe = 1;
 	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_SUBSCRIBE_EVENTS, &subscribe) < 0) {
-		raise(exception, errno);
+		client_raise(exception, errno);
 		alsactl_client_unlisten(self);
 	}
 }
@@ -810,4 +810,411 @@ void alsactl_client_unlisten(ALSACtlClient *self)
 	g_source_destroy((GSource *)priv->src);
 	g_free(priv->src);
 	priv->src = NULL;
+}
+
+/* For error handling. */
+G_DEFINE_QUARK("ALSACtlElem", alsactl_elem)
+#define elem_raise(exception, errno)					\
+	g_set_error(exception, alsactl_elem_quark(), errno,		\
+		    "%d: %s", __LINE__, strerror(errno))
+
+struct _ALSACtlElemPrivate {
+	int fd;
+	struct snd_ctl_elem_info info;
+	GArray *dimen;
+};
+G_DEFINE_ABSTRACT_TYPE_WITH_PRIVATE(ALSACtlElem, alsactl_elem, G_TYPE_OBJECT)
+
+enum ctl_elem_prop_type {
+	CTL_ELEM_PROP_FD = 1,
+	CTL_ELEM_PROP_TYPE,
+	CTL_ELEM_PROP_CHANNELS,
+	/* Identifications */
+	CTL_ELEM_PROP_NAME,
+	CTL_ELEM_PROP_ID,
+	CTL_ELEM_PROP_IFACE,
+	CTL_ELEM_PROP_DEVICE,
+	CTL_ELEM_PROP_SUBDEVICE,
+	/* Permissions */
+	CTL_ELEM_PROP_READABLE,
+	CTL_ELEM_PROP_WRITABLE,
+	CTL_ELEM_PROP_VOLATILE,
+	CTL_ELEM_PROP_INACTIVE,
+	CTL_ELEM_PROP_LOCKED,
+	CTL_ELEM_PROP_IS_OWNED,
+	CTL_ELEM_PROP_IS_USER,
+	CTL_ELEM_PROP_DIMENSION,
+	CTL_ELEM_PROP_COUNT,
+};
+static GParamSpec *ctl_elem_props[CTL_ELEM_PROP_COUNT] = { NULL, };
+
+/* This object has one signal. */
+enum ctl_elem_sig_type {
+	CTL_ELEM_SIG_CHANGED = 0,
+	CTL_ELEM_SIG_UPDATED,
+	CTL_ELEM_SIG_REMOVED,
+	CTL_ELEM_SIG_COUNT,
+};
+static guint ctl_elem_sigs[CTL_ELEM_SIG_COUNT] = { 0 };
+
+static void ctl_elem_get_property(GObject *obj, guint id,
+				     GValue *val, GParamSpec *spec)
+{
+	ALSACtlElem *self = ALSACTL_ELEM(obj);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+
+	switch (id) {
+	case CTL_ELEM_PROP_TYPE:
+		g_value_set_int(val, priv->info.type);
+		break;
+	case CTL_ELEM_PROP_CHANNELS:
+		g_value_set_uint(val, priv->info.count);
+		break;
+	case CTL_ELEM_PROP_NAME:
+		g_value_set_string(val, (char *)priv->info.id.name);
+		break;
+	case CTL_ELEM_PROP_ID:
+		g_value_set_uint(val, priv->info.id.numid);
+		break;
+	case CTL_ELEM_PROP_IFACE:
+		g_value_set_int(val, priv->info.id.iface);
+		break;
+	case CTL_ELEM_PROP_DEVICE:
+		g_value_set_uint(val, priv->info.id.device);
+		break;
+	case CTL_ELEM_PROP_SUBDEVICE:
+		g_value_set_uint(val, priv->info.id.subdevice);
+		break;
+	case CTL_ELEM_PROP_READABLE:
+		g_value_set_boolean(val,
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_READ));
+		break;
+	case CTL_ELEM_PROP_WRITABLE:
+		g_value_set_boolean(val,
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_WRITE));
+		break;
+	case CTL_ELEM_PROP_VOLATILE:
+		g_value_set_boolean(val,
+		    !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_VOLATILE));
+		break;
+	case CTL_ELEM_PROP_INACTIVE:
+		g_value_set_boolean(val,
+		    !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_INACTIVE));
+		break;
+	case CTL_ELEM_PROP_LOCKED:
+		g_value_set_boolean(val,
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_LOCK));
+		break;
+	case CTL_ELEM_PROP_IS_OWNED:
+		g_value_set_boolean(val,
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER));
+		break;
+	case CTL_ELEM_PROP_IS_USER:
+		g_value_set_boolean(val,
+			!!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_USER));
+		break;
+	case CTL_ELEM_PROP_DIMENSION:
+		g_value_set_static_boxed(val, priv->dimen);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
+		break;
+	}
+}
+
+static void ctl_elem_set_property(GObject *obj, guint id,
+				     const GValue *val, GParamSpec *spec)
+{
+	ALSACtlElem *self = ALSACTL_ELEM(obj);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+
+	switch (id) {
+	/* These should be set by constructor. */
+	case CTL_ELEM_PROP_FD:
+		priv->fd = g_value_get_int(val);
+		break;
+	case CTL_ELEM_PROP_NAME:
+		strncpy((char *)priv->info.id.name, g_value_get_string(val),
+			sizeof(priv->info.id.name));
+		break;
+	case CTL_ELEM_PROP_ID:
+		priv->info.id.numid = g_value_get_uint(val);
+		break;
+	case CTL_ELEM_PROP_IFACE:
+		priv->info.id.iface = g_value_get_int(val);
+		break;
+	case CTL_ELEM_PROP_DEVICE:
+		priv->info.id.device = g_value_get_uint(val);
+		break;
+	case CTL_ELEM_PROP_SUBDEVICE:
+		priv->info.id.subdevice = g_value_get_uint(val);
+		break;
+	/* The index is not required. */
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
+		break;
+	}
+}
+
+static void ctl_elem_finalize(GObject *obj)
+{
+	ALSACtlElem *self = ALSACTL_ELEM(obj);
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+	GError *exception = NULL;
+
+	/* Leave ownership to release this elemset. */
+	alsactl_elem_unlock(self, &exception);
+	if (exception != NULL)
+		g_error_free(exception);
+
+	/* Remove this element as long as no processes owns. */
+	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
+		ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &priv->info.id);
+
+	g_array_free(priv->dimen, TRUE);
+
+	alsactl_client_remove_elem(self->_client, self);
+
+	G_OBJECT_CLASS(alsactl_elem_parent_class)->finalize(obj);
+}
+
+static void elem_update(ALSACtlElem *self, GError **exception)
+{
+	struct snd_ctl_elem_info info = {{0}};
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+
+	alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
+}
+
+static void alsactl_elem_class_init(ALSACtlElemClass *klass)
+{
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+	/* Set default method. */
+	klass->update = elem_update;
+
+	gobject_class->get_property = ctl_elem_get_property;
+	gobject_class->set_property = ctl_elem_set_property;
+	gobject_class->finalize = ctl_elem_finalize;
+
+	ctl_elem_props[CTL_ELEM_PROP_FD] =
+		g_param_spec_int("fd", "fd",
+			"file descriptor for special file of control device",
+			INT_MIN, INT_MAX,
+			-1,
+			G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_TYPE] =
+		g_param_spec_int("type", "type",
+				 "The type of this element",
+				 0, INT_MAX,
+				 0,
+				 G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_CHANNELS] =
+		g_param_spec_uint("channels", "channels",
+				  "The number of channels in this element",
+				  0, UINT_MAX,
+				  0,
+				  G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_NAME] =
+		g_param_spec_string("name", "name",
+				    "The name for this element",
+				    "element",
+				   G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_ID] =
+		g_param_spec_uint("id", "id",
+				  "The numerical ID for this element",
+				  0, UINT_MAX,
+				  0,
+				  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_IFACE] =
+		g_param_spec_int("iface", "iface",
+				 "The type of interface for this element",
+				 0, INT_MAX,
+				 0,
+				 G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_DEVICE] =
+		g_param_spec_uint("device", "device",
+			"The numerical number for device of this element",
+				  0, UINT_MAX,
+				  0,
+				  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_SUBDEVICE] =
+		g_param_spec_uint("subdevice", "subdevice",
+		"The numerical number of subdevice for this element",
+				  0, UINT_MAX,
+				  0,
+				  G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+	ctl_elem_props[CTL_ELEM_PROP_READABLE] =
+		g_param_spec_boolean("readable", "readable",
+				"Whether this element is readable or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_WRITABLE] =
+		g_param_spec_boolean("writable", "writable",
+				"Whether this element is writable or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_VOLATILE] =
+		g_param_spec_boolean("volatile", "volatile",
+				     "?????",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_INACTIVE] =
+		g_param_spec_boolean("inactive", "inactive",
+				"Whether this element is inactive or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_LOCKED] =
+		g_param_spec_boolean("locked", "locked",
+				"Whether this element is locked or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_IS_OWNED] =
+		g_param_spec_boolean("is-owned", "is-owned",
+			"Whether some processes owns this element or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_IS_USER] =
+		g_param_spec_boolean("is-user", "is-user",
+			"Whether this elment set is added by userland or not",
+				     FALSE,
+				     G_PARAM_READABLE);
+	ctl_elem_props[CTL_ELEM_PROP_DIMENSION] =
+		g_param_spec_boxed("dimension", "dimension",
+				   "When channels construct matrix, return an"
+				   "array filled with elements in each level",
+				   G_TYPE_ARRAY,
+				   G_PARAM_READABLE);
+	g_object_class_install_properties(gobject_class,
+					  CTL_ELEM_PROP_COUNT,
+					  ctl_elem_props);
+
+	/**
+	 * ALSACtlElem::changed:
+	 * @self: A #ALSACtlElem
+	 *
+	 * The values in this element are changed.
+	 */
+	ctl_elem_sigs[CTL_ELEM_SIG_CHANGED] =
+		g_signal_new("changed",
+			     G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
+			     0,
+			     NULL, NULL,
+			     g_cclosure_marshal_VOID__VOID,
+			     G_TYPE_NONE, 0, NULL);
+	/**
+	 * ALSACtlElem::updated:
+	 * @self: A #ALSACtlElem
+	 *
+	 * The information of this element are changed.
+	 */
+	ctl_elem_sigs[CTL_ELEM_SIG_UPDATED] =
+		g_signal_new("updated",
+			     G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
+			     0,
+			     NULL, NULL,
+			     g_cclosure_marshal_VOID__VOID,
+			     G_TYPE_NONE, 0, NULL);
+	/**
+	 * ALSACtlElem::removed:
+	 * @self: A #ALSACtlElem
+	 *
+	 * This element is removed.
+	 */
+	ctl_elem_sigs[CTL_ELEM_SIG_REMOVED] =
+		g_signal_new("removed",
+			     G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
+			     0,
+			     NULL, NULL,
+			     g_cclosure_marshal_VOID__VOID,
+			     G_TYPE_NONE, 0, NULL);
+}
+
+static void alsactl_elem_init(ALSACtlElem *self)
+{
+	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
+	priv->dimen = g_array_sized_new(FALSE, TRUE, sizeof(gushort),
+					G_N_ELEMENTS(priv->info.dimen.d));
+}
+
+void alsactl_elem_update(ALSACtlElem *self, GError **exception)
+{
+	ALSACTL_ELEM_GET_CLASS(self)->update(self, exception);
+}
+
+void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+	struct snd_ctl_elem_id *id;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = alsactl_elem_get_instance_private(self);
+
+	id = &priv->info.id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
+		elem_raise(exception, errno);
+	else
+		alsactl_elem_update(self, exception);
+}
+
+void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+	struct snd_ctl_elem_id *id;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = alsactl_elem_get_instance_private(self);
+
+	id = &priv->info.id;
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
+		alsactl_elem_update(self, exception);
+	else if (errno != -EINVAL)
+		elem_raise(exception, errno);
+}
+
+void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
+			      struct snd_ctl_elem_value *elem_val,
+			      GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = alsactl_elem_get_instance_private(self);
+
+	elem_val->id.numid = priv->info.id.numid;
+	if (ioctl(priv->fd, cmd, elem_val) < 0)
+		elem_raise(exception, errno);
+}
+
+void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
+			     GError **exception)
+{
+	ALSACtlElemPrivate *priv;
+	unsigned int i;
+
+	g_return_if_fail(ALSACTL_IS_ELEM(self));
+	priv = alsactl_elem_get_instance_private(self);
+
+	info->id.numid = priv->info.id.numid;
+
+	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
+		elem_raise(exception, errno);
+
+	/*
+	 * The numid is rollback to a numid of the first element in this set.
+	 * This is a workaround for this ugly design.
+	 *
+	 * TODO: upstream should fix this bug. numid or index should be
+	 * kept as it was.
+	 */
+	info->id.numid = priv->info.id.numid;
+
+	/* Copy updated information. */
+	priv->info = *info;
+
+	/* Update dimension information. */
+	g_array_set_size(priv->dimen, 0);
+	for (i = 0; i < G_N_ELEMENTS(priv->info.dimen.d); i++)
+		g_array_insert_val(priv->dimen, i, priv->info.dimen.d[i]);
 }

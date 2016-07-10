@@ -22,9 +22,8 @@ libalsactl_la_SOURCES =				\
 	alsactl_sigs_marshal.h			\
 	alsactl_sigs_marshal.c			\
 	client.h				\
-	client.c				\
+	client_elem.c				\
 	elem.h					\
-	elem.c					\
 	elem_int.h				\
 	elem_int.c				\
 	elem_bool.h				\
