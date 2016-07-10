@@ -155,7 +155,17 @@ void alsactl_client_open(ALSACtlClient *self, const gchar *path,
 	}
 }
 
-static void allocate_elem_ids(ALSACtlClientPrivate *priv,
+static int client_ioctl(ALSACtlClient *self, unsigned long request, void *arg)
+{
+	if (!ALSACTL_IS_CLIENT(self)) {
+		errno = EINVAL;
+		return -1;
+	}
+	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
+	return ioctl(priv->fd, request, arg);
+}
+
+static void allocate_elem_ids(ALSACtlClient *self,
 			      struct snd_ctl_elem_list *list,
 			      GError **exception)
 {
@@ -165,7 +175,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 	memset(list, 0, sizeof(struct snd_ctl_elem_list));
 
 	/* Get the number of elements in this control device. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+	if (client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
 		client_raise(exception, errno);
 		return;
 	}
@@ -191,7 +201,7 @@ static void allocate_elem_ids(ALSACtlClientPrivate *priv,
 		list->pids = ids + list->offset;
 
 		/* Get the IDs of elements in this control device. */
-		if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
+		if (client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_LIST, list) < 0) {
 			client_raise(exception, errno);
 			free(ids);
 			list->pids = NULL;
@@ -221,12 +231,8 @@ static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
 void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 				  GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	struct snd_ctl_elem_list elem_list = {0};
 	unsigned int i;
-
-	g_return_if_fail(ALSACTL_IS_CLIENT(self));
-	priv = alsactl_client_get_instance_private(self);
 
 	/* Check the size of element in given list. */
 	if (g_array_get_element_size(list) != sizeof(guint)) {
@@ -234,7 +240,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
 		return;
 	}
 
-	allocate_elem_ids(priv, &elem_list, exception);
+	allocate_elem_ids(self, &elem_list, exception);
 	if (*exception != NULL)
 		return;
 
@@ -296,7 +302,6 @@ static ALSACtlElem *insert_elem_to_cache(ALSACtlClient *self,
 ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 				     GError **exception)
 {
-	ALSACtlClientPrivate *priv;
 	ALSACtlElem *elem = NULL;
 	struct snd_ctl_elem_list elem_list;
 	struct snd_ctl_elem_id *id;
@@ -304,9 +309,8 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	unsigned int i;
 
 	g_return_val_if_fail(ALSACTL_IS_CLIENT(self), NULL);
-	priv = alsactl_client_get_instance_private(self);
 
-	allocate_elem_ids(priv, &elem_list, exception);
+	allocate_elem_ids(self, &elem_list, exception);
 	if (*exception != NULL)
 		return NULL;
 
@@ -322,7 +326,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
 	id = &elem_list.pids[i];
 
 	info.id = *id;
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
+	if (client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) {
 		client_raise(exception, errno);
 		goto end;
 	}
@@ -392,13 +396,12 @@ static void add_elems(ALSACtlClient *self, GType type,
 		      struct snd_ctl_elem_info *info, unsigned int elem_count,
 		      GArray *elems, GError **exception)
 {
-	ALSACtlClientPrivate *priv = alsactl_client_get_instance_private(self);
 	struct snd_ctl_elem_id id;
 	ALSACtlElem *elem;
 	unsigned int i;
 
 	/* Add this elements. */
-	if (ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_ADD, info) < 0) {
+	if (client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_ADD, info) < 0) {
 		client_raise(exception, errno);
 		return;
 	}
@@ -411,7 +414,8 @@ static void add_elems(ALSACtlClient *self, GType type,
 		elem = insert_elem_to_cache(self, type, &id, exception);
 		if (*exception != NULL) {
 			/* Cacheed objects are released by I/O handler. */
-			ioctl(priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE, &info->id);
+			client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_REMOVE,
+				     &info->id);
 			break;
 		}
 
@@ -959,8 +963,6 @@ static void ctl_elem_finalize(GObject *obj)
 {
 	ALSACtlElem *self = ALSACTL_ELEM(obj);
 	ALSACtlElemPrivate *priv = alsactl_elem_get_instance_private(self);
-	ALSACtlClientPrivate *client_priv =
-			alsactl_client_get_instance_private(priv->client);
 	GError *exception = NULL;
 
 	/* Leave ownership to release this elemset. */
@@ -970,8 +972,8 @@ static void ctl_elem_finalize(GObject *obj)
 
 	/* Remove this element as long as no processes owns. */
 	if (!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER))
-		ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_REMOVE,
-		      &priv->info.id);
+		client_ioctl(priv->client, SNDRV_CTL_IOCTL_ELEM_REMOVE,
+			     &priv->info.id);
 
 	g_array_free(priv->dimen, TRUE);
 
@@ -1148,17 +1150,14 @@ void alsactl_elem_update(ALSACtlElem *self, GError **exception)
 void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
-	ALSACtlClientPrivate *client_priv;
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
-	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
-	client_priv = alsactl_client_get_instance_private(priv->client);
-
 	id = &priv->info.id;
-	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
+
+	if (client_ioctl(priv->client, SNDRV_CTL_IOCTL_ELEM_LOCK, id) < 0)
 		elem_raise(exception, errno);
 	else
 		alsactl_elem_update(self, exception);
@@ -1167,17 +1166,14 @@ void alsactl_elem_lock(ALSACtlElem *self, GError **exception)
 void alsactl_elem_unlock(ALSACtlElem *self, GError **exception)
 {
 	ALSACtlElemPrivate *priv;
-	ALSACtlClientPrivate *client_priv;
 	struct snd_ctl_elem_id *id;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
-	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
-	client_priv = alsactl_client_get_instance_private(priv->client);
-
 	id = &priv->info.id;
-	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
+
+	if (client_ioctl(priv->client, SNDRV_CTL_IOCTL_ELEM_UNLOCK, id) >= 0)
 		alsactl_elem_update(self, exception);
 	else if (errno != -EINVAL)
 		elem_raise(exception, errno);
@@ -1188,16 +1184,13 @@ void alsactl_elem_value_ioctl(ALSACtlElem *self, int cmd,
 			      GError **exception)
 {
 	ALSACtlElemPrivate *priv;
-	ALSACtlClientPrivate *client_priv;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
-	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
-	client_priv = alsactl_client_get_instance_private(priv->client);
-
 	elem_val->id.numid = priv->info.id.numid;
-	if (ioctl(client_priv->fd, cmd, elem_val) < 0)
+
+	if (client_ioctl(priv->client, cmd, elem_val) < 0)
 		elem_raise(exception, errno);
 }
 
@@ -1205,18 +1198,14 @@ void alsactl_elem_info_ioctl(ALSACtlElem *self, struct snd_ctl_elem_info *info,
 			     GError **exception)
 {
 	ALSACtlElemPrivate *priv;
-	ALSACtlClientPrivate *client_priv;
 	unsigned int i;
 
 	g_return_if_fail(ALSACTL_IS_ELEM(self));
 	priv = alsactl_elem_get_instance_private(self);
 
-	g_return_if_fail(ALSACTL_IS_CLIENT(priv->client));
-	client_priv = alsactl_client_get_instance_private(priv->client);
-
 	info->id.numid = priv->info.id.numid;
 
-	if (ioctl(client_priv->fd, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
+	if (client_ioctl(priv->client, SNDRV_CTL_IOCTL_ELEM_INFO, info) < 0)
 		elem_raise(exception, errno);
 
 	/*
