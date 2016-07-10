@@ -40,8 +40,6 @@ struct _ALSACtlClient {
 	GObject parent_instance;
 
 	ALSACtlClientPrivate *priv;
-
-	int fd;
 };
 
 struct _ALSACtlClientClass {
