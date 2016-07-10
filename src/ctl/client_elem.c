@@ -732,14 +732,11 @@ static gboolean check_src(GSource *gsrc)
 	count = len / sizeof(struct snd_ctl_event);
 	for (i = 0; i < count; i++) {
 		/* Currently ALSA middleware supports 'elem' event only. */
-		switch (priv->event[i].type) {
-		case SNDRV_CTL_EVENT_ELEM:
-			handle_elem_event(client, priv->event[i].data.elem.mask,
-					  &priv->event[i].data.elem.id);
-			break;
-		default:
-			break;
-		}
+		if (priv->event[i].type != SNDRV_CTL_EVENT_ELEM)
+			continue;
+
+		handle_elem_event(client, priv->event[i].data.elem.mask,
+				  &priv->event[i].data.elem.id);
 	}
 end:
 	/* Don't go to dispatch, then continue to process this source. */
