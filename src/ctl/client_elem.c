@@ -819,7 +819,6 @@ G_DEFINE_QUARK("ALSACtlElem", alsactl_elem)
 
 struct _ALSACtlElemPrivate {
 	ALSACtlClient *client;
-	int fd;
 	struct snd_ctl_elem_info info;
 	GArray *dimen;
 };
