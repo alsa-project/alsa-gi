@@ -34,7 +34,6 @@ typedef struct _ALSACtlElem		ALSACtlElem;
 typedef struct _ALSACtlElemClass	ALSACtlElemClass;
 typedef struct _ALSACtlElemPrivate	ALSACtlElemPrivate;
 
-typedef struct _ALSACtlClient	ALSACtlClient;
 struct _ALSACtlElem {
 	GObject parent_instance;
 
