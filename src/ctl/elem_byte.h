@@ -1,5 +1,5 @@
-#ifndef __ALSA_TOOLS_GIR_ALSACTL_ELEM_BYTE__H__
-#define __ALSA_TOOLS_GIR_ALSACTL_ELEM_BYTE__H__
+#ifndef __ALSA_GOBJECT_ALSACTL_ELEM_BYTE__H__
+#define __ALSA_GOBJECT_ALSACTL_ELEM_BYTE__H__
 
 #include <glib.h>
 #include <glib-object.h>

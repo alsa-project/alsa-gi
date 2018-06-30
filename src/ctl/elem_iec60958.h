@@ -1,5 +1,5 @@
-#ifndef __ALSA_TOOLS_GIR_ALSACTL_ELEM_IEC60958__H__
-#define __ALSA_TOOLS_GIR_ALSACTL_ELEM_IEC60958__H__
+#ifndef __ALSA_GOBJECT_ALSACTL_ELEM_IEC60958__H__
+#define __ALSA_GOBJECT_ALSACTL_ELEM_IEC60958__H__
 
 #include <glib.h>
 #include <glib-object.h>

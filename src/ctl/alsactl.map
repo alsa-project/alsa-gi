@@ -1,0 +1,12 @@
+V0_0_0 {
+  global:
+    "alsactl_elem_get_type";
+    "alsactl_client_get_type";
+    "alsactl_elem_bool_get_type";
+    "alsactl_elem_byte_get_type";
+    "alsactl_elem_enum_get_type";
+    "alsactl_elem_iec60958_get_type";
+    "alsactl_elem_int_get_type";
+  local:
+    *;
+};

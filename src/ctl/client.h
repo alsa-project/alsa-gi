@@ -1,5 +1,5 @@
-#ifndef __ALSA_TOOLS_GIR_ALSACTL_CLIENT__H_
-#define __ALSA_TOOLS_GIR_ALSACTL_CLIENT__H_
+#ifndef __ALSA_GOBJECT_ALSACTL_CLIENT__H_
+#define __ALSA_GOBJECT_ALSACTL_CLIENT__H_
 
 #include <glib.h>
 #include <glib-object.h>
