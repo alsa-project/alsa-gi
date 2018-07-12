@@ -8,5 +8,6 @@ project('alsa-gobject', 'c',
 gnome = import('gnome')
 
 subdir('src/ctl')
+subdir('src/seq')
 #subdir('doc')
 #subdir('tests')

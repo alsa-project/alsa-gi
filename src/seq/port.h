@@ -1,5 +1,5 @@
-#ifndef __ALSASEQ_PORT_H__
-#define __ALSASEQ_PORT_H__
+#ifndef __ALSA_GOBJECT_ALSASEQ_PORT_H__
+#define __ALSA_GOBJECT_ALSASEQ_PORT_H__
 
 #include <glib.h>
 #include <glib-object.h>

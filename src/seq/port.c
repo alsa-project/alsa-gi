@@ -12,6 +12,8 @@
 #include <sound/asequencer.h>
 #include "port.h"
 
+#include "alsaseq_sigs_marshal.h"
+
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif

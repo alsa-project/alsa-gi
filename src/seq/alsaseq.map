@@ -1,0 +1,16 @@
+V0_0_0 {
+  global:
+    "alsaseq_client_get_type";
+    "alsaseq_client_open";
+    "alsaseq_client_update";
+    "alsaseq_client_listen";
+    "alsaseq_client_unlisten";
+    "alsaseq_client_open_port";
+    "alsaseq_client_close_port";
+    "alsaseq_client_get_ports";
+
+    "alsaseq_port_get_type";
+    "alsaseq_port_update";
+  local:
+    *;
+};
