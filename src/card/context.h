@@ -1,5 +1,5 @@
-#ifndef __ALSA_TOOLS_ALSA_CONTEXT__
-#define __ALSA_TOOLS_ALSA_CONTEXT__
+#ifndef __ALSA_GOBJECT_ALSACARD_CONTEXT__H
+#define __ALSA_GOBJECT_ALSACARD_CONTEXT__H
 
 #include <stdint.h>
 

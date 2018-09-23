@@ -1,5 +1,5 @@
-#ifndef HINAWA_SND_H
-#define HINAWA_SND_H
+#ifndef __ALSA_GOBJECT_ALSACARD_CARD__H
+#define __ALSA_GOBJECT_ALSACARD_CARD__H
 
 #include <glib-object.h>
 #include <gio/gio.h>

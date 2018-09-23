@@ -1,0 +1,17 @@
+V0_0_0 {
+  global:
+    "alsacard_unit_get_type";
+    "alsacard_unit_open";
+
+    "alsa_context_reactant_create";
+    "alsa_context_reactant_add";
+    "alsa_context_reactant_remove";
+    "alsa_context_reactant_destroy";
+
+    "alsa_context_reactor_create";
+    "alsa_context_reactor_start";
+    "alsa_context_reactor_stop";
+    "alsa_context_reactor_destroy";
+  local:
+    *;
+};
