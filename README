@@ -1,28 +1,36 @@
-GObject introspection library for ALSA kernel/userspace interface.
+# alsa-gobject
 
-Requirements:
-- Linux with ALSA
-- autoconf
-- automake
-- glib-2.0 2.34 or later
-- gobject-2.0
+2018/09/23
+Takashi Sakamoto
 
-How to build:
- $ ./autogen.sh
- $ ./configure
- $ make
- $ make install
+## Introduction
 
-How to test:
- (needless to install)
- $ ./autogen.sh
- $ ./configure
- $ make
- $ ./sample/run.sh [ctl|timer|seq]
- (PyGObject is required.)
+I design this library to use ALSA kernel-land functionalities by any language
+bindings for GObject Introspection. According to this design, this library is
+an application of Linux sound subsystem and GLib/GObject.
 
-Current status:
- Under development.
- - Partly support for Control interface
- - Partly support for Timer interface
- - Partly support for Sequencer interface
+## License
+
+- GNU Lesser General Public License version 2.1 or later
+
+## Dependencies
+
+- Glib 2.34.0 or later
+- GObject Introspection 1.32.1 or later
+- Linux kernel 3.12 or later
+
+## Requirements to build
+
+- Meson 0.32.0 or later
+- Ninja
+- PyGObject (optional to run unit tests)
+- GTK-Doc 1.18-2 (optional to generate API documentation)
+
+## How to build
+
+```
+$ meson . build
+$ cd build
+$ ninja
+$ ninja install
+```
