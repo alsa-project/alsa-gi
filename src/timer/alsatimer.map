@@ -1,0 +1,13 @@
+V0_0_0 {
+  global:
+    "alsatimer_client_get_type";
+    "alsatimer_client_open";
+    "alsatimer_client_get_timer_list";
+    "alsatimer_client_select_timer";
+    "alsatimer_client_get_status";
+    "alsatimer_client_start";
+    "alsatimer_client_stop";
+    "alsatimer_client_resume";
+  local:
+    *;
+};

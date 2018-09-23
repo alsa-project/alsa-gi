@@ -1,5 +1,5 @@
-#ifndef __ALSATIMER_CLIENT_H__
-#define __ALSATIMER_CLIENT_H__
+#ifndef __ALSA_GOBJECT_ALSATIMER_CLIENT_H__
+#define __ALSA_GOBJECT_ALSATIMER_CLIENT_H__
 
 #include <glib-object.h>
 

@@ -9,5 +9,6 @@ gnome = import('gnome')
 
 subdir('src/ctl')
 subdir('src/seq')
+subdir('src/timer')
 #subdir('doc')
 #subdir('tests')
