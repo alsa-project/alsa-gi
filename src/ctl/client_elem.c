@@ -18,6 +18,8 @@
 #include "elem_byte.h"
 #include "elem_iec60958.h"
 
+#include "alsactl_enums.h"
+
 /* For error handling. */
 G_DEFINE_QUARK("ALSACtlClient", alsactl_client)
 #define client_raise(exception, errno)                      \
@@ -855,7 +857,7 @@ static void ctl_elem_get_property(GObject *obj, guint id,
 
     switch (id) {
     case CTL_ELEM_PROP_TYPE:
-        g_value_set_int(val, priv->info.type);
+        g_value_set_enum(val, (ALSACtlElemTypeEnum)priv->info.type);
         break;
     case CTL_ELEM_PROP_CHANNELS:
         g_value_set_uint(val, priv->info.count);
@@ -995,11 +997,12 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
                             ALSACTL_TYPE_CLIENT,
                             G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
     ctl_elem_props[CTL_ELEM_PROP_TYPE] =
-        g_param_spec_int("type", "type",
-                         "The type of this element",
-                         0, INT_MAX,
-                         0,
-                         G_PARAM_READABLE);
+        g_param_spec_enum("type", "type",
+                          "The type of this element, one of "
+                          "ALSACtlElemTypeEnum",
+                          ALSACTL_TYPE_ELEM_TYPE_ENUM,
+                          ALSACTL_ELEM_TYPE_ENUM_NONE,
+                          G_PARAM_READABLE);
     ctl_elem_props[CTL_ELEM_PROP_CHANNELS] =
         g_param_spec_uint("channels", "channels",
                           "The number of channels in this element",

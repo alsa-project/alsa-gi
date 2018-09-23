@@ -5,6 +5,7 @@
 #include <glib-object.h>
 
 #include "client.h"
+#include "alsactl_enum_types.h"
 
 G_BEGIN_DECLS
 

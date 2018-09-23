@@ -41,6 +41,8 @@ V0_0_0 {
     "alsactl_elem_int_get_step";
     "alsactl_elem_int_read";
     "alsactl_elem_int_write";
+
+    "alsactl_elem_type_enum_get_type";
   local:
     *;
 };
