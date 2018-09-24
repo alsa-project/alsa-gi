@@ -40,10 +40,19 @@ elem_access_flags = (
     'USER',
 )
 
+event_mask_flags = (
+    'VALUE',
+    'INFO',
+    'ADD',
+    'TLV',
+    'REMOVE',
+)
+
 types = {
     ALSACtl.ElemTypeEnum:   elem_type_enumerators,
     ALSACtl.ElemIfaceEnum:  elem_iface_enumerators,
     ALSACtl.ElemAccessFlag: elem_access_flags,
+    ALSACtl.EventMaskFlag:  event_mask_flags,
 }
 
 for obj, types in types.items():
