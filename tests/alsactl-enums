@@ -25,9 +25,25 @@ elem_iface_enumerators = (
     'SEQUENCER',
 )
 
+elem_access_flags = (
+    'READ',
+    'WRITE',
+    'VOLATILE',
+    'TIMESTAMP',
+    'TLV_READ',
+    'TLV_WRITE',
+    'TLV_COMMAND',
+    'INACTIVE',
+    'LOCK',
+    'OWNER',
+    'TLV_CALLBACK',
+    'USER',
+)
+
 types = {
     ALSACtl.ElemTypeEnum:   elem_type_enumerators,
     ALSACtl.ElemIfaceEnum:  elem_iface_enumerators,
+    ALSACtl.ElemAccessFlag: elem_access_flags,
 }
 
 for obj, types in types.items():

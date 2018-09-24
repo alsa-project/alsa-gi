@@ -827,14 +827,8 @@ enum ctl_elem_prop_type {
     CTL_ELEM_PROP_IFACE,
     CTL_ELEM_PROP_DEVICE,
     CTL_ELEM_PROP_SUBDEVICE,
-    /* Permissions */
-    CTL_ELEM_PROP_READABLE,
-    CTL_ELEM_PROP_WRITABLE,
-    CTL_ELEM_PROP_VOLATILE,
-    CTL_ELEM_PROP_INACTIVE,
-    CTL_ELEM_PROP_LOCKED,
-    CTL_ELEM_PROP_IS_OWNED,
-    CTL_ELEM_PROP_IS_USER,
+    /* Accesses */
+    CTL_ELEM_PROP_ACCESS,
     CTL_ELEM_PROP_DIMENSION,
     CTL_ELEM_PROP_COUNT,
 };
@@ -877,36 +871,8 @@ static void ctl_elem_get_property(GObject *obj, guint id,
     case CTL_ELEM_PROP_SUBDEVICE:
         g_value_set_uint(val, priv->info.id.subdevice);
         break;
-    case CTL_ELEM_PROP_READABLE:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_READ));
-        break;
-    case CTL_ELEM_PROP_WRITABLE:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_WRITE));
-        break;
-    case CTL_ELEM_PROP_VOLATILE:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_VOLATILE));
-        break;
-    case CTL_ELEM_PROP_INACTIVE:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_INACTIVE));
-        break;
-    case CTL_ELEM_PROP_LOCKED:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_LOCK));
-        break;
-    case CTL_ELEM_PROP_IS_OWNED:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_OWNER));
-        break;
-    case CTL_ELEM_PROP_IS_USER:
-        g_value_set_boolean(val,
-            !!(priv->info.access & SNDRV_CTL_ELEM_ACCESS_USER));
-        break;
-    case CTL_ELEM_PROP_DIMENSION:
-        g_value_set_static_boxed(val, priv->dimen);
+    case CTL_ELEM_PROP_ACCESS:
+        g_value_set_flags(val, (ALSACtlElemAccessFlag)priv->info.access);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -1039,41 +1005,13 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
                           0, UINT_MAX,
                           0,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-    ctl_elem_props[CTL_ELEM_PROP_READABLE] =
-        g_param_spec_boolean("readable", "readable",
-                "            Whether this element is readable or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_WRITABLE] =
-        g_param_spec_boolean("writable", "writable",
-                             "Whether this element is writable or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_VOLATILE] =
-        g_param_spec_boolean("volatile", "volatile",
-                             "?????",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_INACTIVE] =
-        g_param_spec_boolean("inactive", "inactive",
-                             "Whether this element is inactive or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_LOCKED] =
-        g_param_spec_boolean("locked", "locked",
-                             "Whether this element is locked or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_IS_OWNED] =
-        g_param_spec_boolean("is-owned", "is-owned",
-                             "Whether some processes owns this element or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    ctl_elem_props[CTL_ELEM_PROP_IS_USER] =
-        g_param_spec_boolean("is-user", "is-user",
-                        "Whether this elment set is added by userland or not",
-                        FALSE,
-                        G_PARAM_READABLE);
+    ctl_elem_props[CTL_ELEM_PROP_ACCESS] =
+        g_param_spec_flags("access", "access",
+                           "Access flags for this element, with "
+                           "ALSACtlElemAccessFlag values",
+                           ALSACTL_TYPE_ELEM_ACCESS_FLAG,
+                           ALSACTL_ELEM_ACCESS_FLAG_USER,
+                           G_PARAM_READABLE);
     ctl_elem_props[CTL_ELEM_PROP_DIMENSION] =
         g_param_spec_boxed("dimension", "dimension",
                            "When channels construct matrix, return an"
