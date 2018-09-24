@@ -15,8 +15,19 @@ elem_type_enumerators = (
     'INTEGER64',
 )
 
+elem_iface_enumerators = (
+    'CARD',
+    'HWDEP',
+    'MIXER',
+    'PCM',
+    'RAWMIDI',
+    'TIMER',
+    'SEQUENCER',
+)
+
 types = {
     ALSACtl.ElemTypeEnum:   elem_type_enumerators,
+    ALSACtl.ElemIfaceEnum:  elem_iface_enumerators,
 }
 
 for obj, types in types.items():

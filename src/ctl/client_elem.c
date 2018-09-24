@@ -869,7 +869,7 @@ static void ctl_elem_get_property(GObject *obj, guint id,
         g_value_set_uint(val, priv->info.id.numid);
         break;
     case CTL_ELEM_PROP_IFACE:
-        g_value_set_int(val, priv->info.id.iface);
+        g_value_set_enum(val, (ALSACtlElemIfaceEnum)priv->info.id.iface);
         break;
     case CTL_ELEM_PROP_DEVICE:
         g_value_set_uint(val, priv->info.id.device);
@@ -933,7 +933,7 @@ static void ctl_elem_set_property(GObject *obj, guint id, const GValue *val,
         priv->info.id.numid = g_value_get_uint(val);
         break;
     case CTL_ELEM_PROP_IFACE:
-        priv->info.id.iface = g_value_get_int(val);
+        priv->info.id.iface = (ALSACtlElemIfaceEnum)g_value_get_enum(val);
         break;
     case CTL_ELEM_PROP_DEVICE:
         priv->info.id.device = g_value_get_uint(val);
@@ -1021,11 +1021,12 @@ static void alsactl_elem_class_init(ALSACtlElemClass *klass)
                           0,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
     ctl_elem_props[CTL_ELEM_PROP_IFACE] =
-        g_param_spec_int("iface", "iface",
-                         "The type of interface for this element",
-                         0, INT_MAX,
-                         0,
-                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+        g_param_spec_enum("iface", "iface",
+                          "The type of interface for this element, one of "
+                          "ALSACtlElemIfaceEnum",
+                          ALSACTL_TYPE_ELEM_IFACE_ENUM,
+                          ALSACTL_ELEM_IFACE_ENUM_CARD,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
     ctl_elem_props[CTL_ELEM_PROP_DEVICE] =
         g_param_spec_uint("device", "device",
                           "The numerical number for device of this element",
