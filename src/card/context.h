@@ -11,19 +11,19 @@ void alsa_context_reactor_destroy(ALSAContextReactor *reactor);
 
 typedef struct alsa_context_reactant ALSAContextReactant;
 typedef enum {
-	ALSAContextReactantStateReadable,
-	ALSAContextReactantStateWritable,
-	ALSAContextReactantStateError,
+    ALSAContextReactantStateReadable,
+    ALSAContextReactantStateWritable,
+    ALSAContextReactantStateError,
 } ALSAContextReactantState;
 typedef void (*ALSAContextReactantCallback)(ALSAContextReactantState state,
-					    void *private_data,
-					    int *err);
+                                            void *private_data,
+                                            int *err);
 
 ALSAContextReactant *alsa_context_reactant_create(unsigned int id, int fd,
-				       ALSAContextReactantCallback callback,
-				       void *private_data, int *err);
+                                        ALSAContextReactantCallback callback,
+                                        void *private_data, int *err);
 void alsa_context_reactant_add(ALSAContextReactant *reactant, uint32_t events,
-			       int *err);
+                               int *err);
 void alsa_context_reactant_remove(ALSAContextReactant *reactant);
 void alsa_context_reactant_destroy(ALSAContextReactant *reactant);
 
