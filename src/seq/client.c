@@ -85,7 +85,7 @@ static void seq_client_get_property(GObject *obj, guint id,
         g_value_set_uchar(val, priv->info.client);
         break;
     case SEQ_CLIENT_PROP_TYPE:
-        g_value_set_int(val, priv->info.type);
+        g_value_set_enum(val, (ALSASeqClientTypeEnum)priv->info.type);
         break;
     case SEQ_CLIENT_PROP_NAME:
         g_value_set_string(val, priv->info.name);
@@ -192,11 +192,12 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
                            0,
                            G_PARAM_READABLE);
     seq_client_props[SEQ_CLIENT_PROP_TYPE] =
-        g_param_spec_int("type", "type",
-                         "The type for this client",
-                         0, INT_MAX,
-                         0,
-                         G_PARAM_READABLE);
+        g_param_spec_enum("type", "type",
+                          "The type for this client, one of "
+                          "ALSASeqClientTypeEnum",
+                          ALSASEQ_TYPE_CLIENT_TYPE_ENUM,
+                          ALSASEQ_CLIENT_TYPE_ENUM_NO_CLIENT,
+                          G_PARAM_READABLE);
     seq_client_props[SEQ_CLIENT_PROP_NAME] =
         g_param_spec_string("name", "name",
                             "The name for this client",
