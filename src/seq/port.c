@@ -77,7 +77,7 @@ static void seq_port_get_property(GObject *obj, guint id,
         g_value_set_flags(val, (ALSASeqPortTypeFlag)priv->info.type);
         break;
     case SEQ_PORT_PROP_CAPABILITY:
-        g_value_set_uint(val, priv->info.capability);
+        g_value_set_flags(val, (ALSASeqPortCapFlag)priv->info.capability);
         break;
     case SEQ_PORT_PROP_MIDI_CHANNELS:
         g_value_set_int(val, priv->info.midi_channels);
@@ -140,7 +140,7 @@ static void seq_port_set_property(GObject *obj, guint id,
         priv->info.type = (ALSASeqPortTypeFlag)g_value_get_flags(val);
         break;
     case SEQ_PORT_PROP_CAPABILITY:
-        priv->info.capability = g_value_get_uint(val);
+        priv->info.capability = (ALSASeqPortCapFlag)g_value_get_flags(val);
         break;
     case SEQ_PORT_PROP_MIDI_CHANNELS:
         priv->info.midi_channels = g_value_get_uint(val);
@@ -251,11 +251,11 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                            ALSASEQ_PORT_TYPE_FLAG_SPECIFIC,
                            G_PARAM_READWRITE);
     seq_port_props[SEQ_PORT_PROP_CAPABILITY] =
-        g_param_spec_uint("capabilities", "capabilities",
-                          "A bitmask of SND_SEQ_PORT_CAP_XXX",
-                          0, UINT_MAX,
-                          0,
-                          G_PARAM_READWRITE);
+        g_param_spec_flags("capabilities", "capabilities",
+                           "A bitflag of ALSASeqPortCapFlag values",
+                           ALSASEQ_TYPE_PORT_CAP_FLAG,
+                           ALSASEQ_PORT_CAP_FLAG_READ,
+                           G_PARAM_READWRITE);
     seq_port_props[SEQ_PORT_PROP_MIDI_CHANNELS] =
         g_param_spec_int("midi-channels", "midi-channels",
                          "MIDI channels",

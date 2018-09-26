@@ -48,12 +48,24 @@ port_type_flags = (
     'APPLICATION',
 )
 
+port_cap_flags = (
+    'READ',
+    'WRITE',
+    'SYNC_READ',
+    'SYNC_WRITE',
+    'DUPLEX',
+    'SUBS_READ',
+    'SUBS_WRITE',
+    'NO_EXPORT',
+)
+
 types = {
     ALSASeq.ClientNumberEnum:   client_number_enumerators,
     ALSASeq.ClientTypeEnum:     client_type_enumerators,
     ALSASeq.ClientFilterFlag:   client_filter_flags,
     ALSASeq.PortNumberEnum:     port_number_enumerators,
     ALSASeq.PortTypeFlag:       port_type_flags,
+    ALSASeq.PortCapFlag:        port_cap_flags,
 }
 
 for obj, types in types.items():
