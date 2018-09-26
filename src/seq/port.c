@@ -13,6 +13,7 @@
 #include "port.h"
 
 #include "alsaseq_sigs_marshal.h"
+#include "alsaseq_enums.h"
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
@@ -283,10 +284,11 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                      G_SIGNAL_RUN_LAST,
                      0,
                      NULL, NULL,
-                     alsaseq_sigs_marshal_VOID__STRING_UINT_CHAR_UCHAR_UINT_UINT_UCHAR_UCHAR,
+                     alsaseq_sigs_marshal_VOID__ENUM_UINT_CHAR_UCHAR_UINT_UINT_UCHAR_UCHAR,
                      G_TYPE_NONE, 8,
-                     G_TYPE_STRING, G_TYPE_UINT, G_TYPE_CHAR, G_TYPE_UCHAR,
-                     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UCHAR, G_TYPE_UCHAR);
+                     ALSASEQ_TYPE_EVENT_TYPE_ENUM, G_TYPE_UINT, G_TYPE_CHAR,
+                     G_TYPE_UCHAR, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UCHAR,
+                     G_TYPE_UCHAR);
 }
 
 static void alsaseq_port_init(ALSASeqPort *self)
