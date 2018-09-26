@@ -19,6 +19,7 @@ V0_0_0 {
     "alsaseq_port_number_enum_get_type";
     "alsaseq_port_type_flag_get_type";
     "alsaseq_port_cap_flag_get_type";
+    "alsaseq_port_cond_flag_get_type";
   local:
     *;
 };

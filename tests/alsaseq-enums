@@ -59,6 +59,12 @@ port_cap_flags = (
     'NO_EXPORT',
 )
 
+port_cond_flags = (
+    'GIVEN_PORT',
+    'TIMESTAMP',
+    'TIME_REAL',
+)
+
 types = {
     ALSASeq.ClientNumberEnum:   client_number_enumerators,
     ALSASeq.ClientTypeEnum:     client_type_enumerators,
@@ -66,6 +72,7 @@ types = {
     ALSASeq.PortNumberEnum:     port_number_enumerators,
     ALSASeq.PortTypeFlag:       port_type_flags,
     ALSASeq.PortCapFlag:        port_cap_flags,
+    ALSASeq.PortCondFlag:       port_cond_flags,
 }
 
 for obj, types in types.items():

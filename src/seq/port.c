@@ -43,9 +43,7 @@ enum seq_port_prop {
     SEQ_PORT_PROP_MIDI_CHANNELS,
     SEQ_PORT_PROP_MIDI_VOICES,
     SEQ_PORT_PROP_SYNTH_VOICES,
-    SEQ_PORT_PROP_PORT_SPECIFIED,
-    SEQ_PORT_PROP_TIMESTAMPING,
-    SEQ_PORT_PROP_TIMESTAMP_REAL,
+    SEQ_PORT_PROP_COND_FLAGS,
     SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID,
     /* Read-only */
     SEQ_PORT_PROP_READ_USE,
@@ -94,17 +92,8 @@ static void seq_port_get_property(GObject *obj, guint id,
     case SEQ_PORT_PROP_WRITE_USE:
         g_value_set_int(val, priv->info.write_use);
         break;
-    case SEQ_PORT_PROP_PORT_SPECIFIED:
-        g_value_set_boolean(val,
-            priv->info.flags & SNDRV_SEQ_PORT_FLG_GIVEN_PORT);
-        break;
-    case SEQ_PORT_PROP_TIMESTAMPING:
-        g_value_set_boolean(val,
-            priv->info.flags & SNDRV_SEQ_PORT_FLG_TIMESTAMP);
-        break;
-    case SEQ_PORT_PROP_TIMESTAMP_REAL:
-        g_value_set_boolean(val,
-            priv->info.flags & SNDRV_SEQ_PORT_FLG_TIME_REAL);
+    case SEQ_PORT_PROP_COND_FLAGS:
+        g_value_set_flags(val, (ALSASeqPortCondFlag)priv->info.flags);
         break;
     case SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID:
         g_value_set_int(val, priv->info.time_queue);
@@ -151,23 +140,8 @@ static void seq_port_set_property(GObject *obj, guint id,
     case SEQ_PORT_PROP_SYNTH_VOICES:
         priv->info.synth_voices = g_value_get_uint(val);
         break;
-    case SEQ_PORT_PROP_PORT_SPECIFIED:
-        if (g_value_get_boolean(val))
-            priv->info.flags |= SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
-        else
-            priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_GIVEN_PORT;
-        break;
-    case SEQ_PORT_PROP_TIMESTAMPING:
-        if (g_value_get_boolean(val))
-            priv->info.flags |= SNDRV_SEQ_PORT_FLG_TIMESTAMP;
-        else
-            priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_TIMESTAMP;
-        break;
-    case SEQ_PORT_PROP_TIMESTAMP_REAL:
-        if (g_value_get_boolean(val))
-            priv->info.flags |= SNDRV_SEQ_PORT_FLG_TIME_REAL;
-        else
-            priv->info.flags &= ~SNDRV_SEQ_PORT_FLG_TIME_REAL;
+    case SEQ_PORT_PROP_COND_FLAGS:
+        priv->info.flags = (ALSASeqPortCondFlag)g_value_get_flags(val);
         break;
     case SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID:
         priv->info.time_queue = g_value_get_int(val);
@@ -274,21 +248,12 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                          INT_MIN, INT_MAX,
                          0,
                          G_PARAM_READWRITE);
-    seq_port_props[SEQ_PORT_PROP_PORT_SPECIFIED] =
-        g_param_spec_boolean("port-specified", "port-specified",
-                             "whether port id is specified at created",
-                             FALSE,
-                             G_PARAM_READABLE);
-    seq_port_props[SEQ_PORT_PROP_TIMESTAMPING] =
-        g_param_spec_boolean("timestamping", "timestamping",
-                             "updating timestamps of incoming events",
-                             FALSE,
-                             G_PARAM_READABLE);
-    seq_port_props[SEQ_PORT_PROP_TIMESTAMP_REAL] =
-        g_param_spec_boolean("timestamp-real", "timestamp-real",
-                             "whether timestamp is in real-time mode",
-                             FALSE,
-                             G_PARAM_READWRITE);
+    seq_port_props[SEQ_PORT_PROP_COND_FLAGS] =
+        g_param_spec_flags("cond-flags", "cond-flags",
+                           "conditional flags of ALSASeqPortCondFlag",
+                           ALSASEQ_TYPE_PORT_COND_FLAG,
+                           0,
+                           G_PARAM_READWRITE);
     seq_port_props[SEQ_PORT_PROP_TIMESTAMP_QUEUE_ID] =
         g_param_spec_int("timestamp-queue", "timestamp-queue",
                          "the queue ID to get timestamps",
