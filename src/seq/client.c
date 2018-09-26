@@ -415,7 +415,7 @@ void alsaseq_client_close_port(ALSASeqClient *self, ALSASeqPort *port)
     priv = alsaseq_client_get_instance_private(self);
 
     g_mutex_lock(&priv->lock);
-    for (entry = priv->ports; entry != NULL; entry = entry->next) {
+    for (entry = priv->ports; entry; entry = entry->next) {
         if (entry->data != port)
             continue;
 
@@ -598,7 +598,7 @@ static void read_messages(ALSASeqClientPrivate *priv)
 
     g_mutex_lock(&priv->lock);
     for (i = 0; i < len; i++) {
-        for (entry = priv->ports; entry != NULL; entry = entry->next) {
+        for (entry = priv->ports; entry; entry = entry->next) {
             port = (ALSASeqPort *)entry->data;
 
             g_object_get_property(G_OBJECT(port), "id", &val);
@@ -671,14 +671,14 @@ void alsaseq_client_listen(ALSASeqClient *self, GError **exception)
     priv = alsaseq_client_get_instance_private(self);
 
     priv->write_buf = g_malloc(BUFFER_SIZE);
-    if (priv->write_buf == NULL) {
+    if (!priv->write_buf) {
         raise(exception, ENOMEM);
         return;
     }
 
     /* Create a source. */
     src = g_source_new(&funcs, sizeof(SeqClientSource));
-    if (src == NULL) {
+    if (!src) {
         raise(exception, ENOMEM);
         g_free(priv->write_buf);
         priv->write_buf = NULL;
@@ -705,7 +705,7 @@ void alsaseq_client_unlisten(ALSASeqClient *self)
     g_return_if_fail(ALSASEQ_IS_CLIENT(self));
     priv = alsaseq_client_get_instance_private(self);
 
-    if (priv->src == NULL)
+    if (!priv->src)
         return;
 
     g_source_destroy((GSource *)priv->src);

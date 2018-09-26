@@ -48,7 +48,7 @@ void alsactl_elem_bool_read(ALSACtlElemBool *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_BOOL(self));
 
-    if ((values == NULL) ||
+    if ((!values) ||
          (g_array_get_element_size(values) != sizeof(gboolean))) {
         raise(exception, EINVAL);
         return;
@@ -56,7 +56,7 @@ void alsactl_elem_bool_read(ALSACtlElemBool *self, GArray *values,
 
     alsactl_elem_value_ioctl(ALSACTL_ELEM(self),
                              SNDRV_CTL_IOCTL_ELEM_READ, &elem_val, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Check the number of values in this element. */
@@ -88,8 +88,7 @@ void alsactl_elem_bool_write(ALSACtlElemBool *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_BOOL(self));
 
-    if (values == NULL ||
-        g_array_get_element_size(values) != sizeof(gboolean) ||
+    if (!values || g_array_get_element_size(values) != sizeof(gboolean) ||
         values->len == 0) {
         raise(exception, EINVAL);
         return;

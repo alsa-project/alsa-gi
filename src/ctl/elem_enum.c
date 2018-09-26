@@ -53,7 +53,7 @@ static void elem_enum_update(ALSACtlElem *parent, GError **exception)
 
     /* Get the count of items. */
     alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
     priv->labels_count = info.value.enumerated.items;
 
@@ -62,7 +62,7 @@ static void elem_enum_update(ALSACtlElem *parent, GError **exception)
         info.value.enumerated.item = i;
 
         alsactl_elem_info_ioctl(ALSACTL_ELEM(self), &info, exception);
-        if (*exception != NULL)
+        if (*exception)
             return;
 
         strcpy(strings[i], info.value.enumerated.name);
@@ -154,15 +154,14 @@ void alsactl_elem_enum_read(ALSACtlElemEnum *self, GArray *values,
     g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
     priv = alsactl_elem_enum_get_instance_private(self);
 
-    if ((values == NULL) ||
-        (g_array_get_element_size(values) != sizeof(gpointer))) {
+    if (!values || (g_array_get_element_size(values) != sizeof(gpointer))) {
         raise(exception, EINVAL);
         return;
     }
 
     alsactl_elem_value_ioctl(ALSACTL_ELEM(self), SNDRV_CTL_IOCTL_ELEM_READ,
                              &elem_val, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Check the number of values in this element. */
@@ -215,8 +214,7 @@ void alsactl_elem_enum_write(ALSACtlElemEnum *self, GArray *values,
     g_return_if_fail(ALSACTL_IS_ELEM_ENUM(self));
     priv = alsactl_elem_enum_get_instance_private(self);
 
-    if ((values == NULL) ||
-        (g_array_get_element_size(values) != sizeof(gpointer)) ||
+    if (!values || (g_array_get_element_size(values) != sizeof(gpointer)) ||
         values->len == 0) {
         raise(exception, EINVAL);
         return;

@@ -185,7 +185,7 @@ static void allocate_elem_ids(ALSACtlClient *self,
 
     /* Allocate spaces for these elements. */
     ids = calloc(list->count, sizeof(struct snd_ctl_elem_id));
-    if (ids == NULL) {
+    if (!ids) {
         client_raise(exception, ENOMEM);
         return;
     }
@@ -215,7 +215,7 @@ static void allocate_elem_ids(ALSACtlClient *self,
 
 static inline void deallocate_elem_ids(struct snd_ctl_elem_list *list)
 {
-    if (list->pids != NULL)
+    if (list->pids!= NULL)
         free(list->pids);
 }
 
@@ -240,7 +240,7 @@ void alsactl_client_get_elem_list(ALSACtlClient *self, GArray *list,
     }
 
     allocate_elem_ids(self, &elem_list, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Return current 'numid' as ID. */
@@ -277,7 +277,7 @@ static ALSACtlElem *insert_elem_to_cache(ALSACtlClient *self,
 
     /* Update the element information. */
     alsactl_elem_update(elem, exception);
-    if (*exception != NULL) {
+    if (*exception) {
         g_clear_object(&elem);
         return NULL;
     }
@@ -310,7 +310,7 @@ ALSACtlElem *alsactl_client_get_elem(ALSACtlClient *self, guint numid,
     g_return_val_if_fail(ALSACTL_IS_CLIENT(self), NULL);
 
     allocate_elem_ids(self, &elem_list, exception);
-    if (*exception != NULL)
+    if (*exception)
         return NULL;
 
     /* Seek a element indicated by the numerical ID. */
@@ -363,14 +363,14 @@ static void init_info(struct snd_ctl_elem_info *info, snd_ctl_elem_type_t type,
     info->owner = number;
 
     /* Check eleset name. */
-    if (name == NULL || strlen(name) >= sizeof(info->id.name)) {
+    if (!name || strlen(name) >= sizeof(info->id.name)) {
         client_raise(exception, EINVAL);
         return;
     }
     strcpy((char *)info->id.name, name);
 
     /* Check the number of elements in the array for dimension. */
-    if (dimen != NULL) {
+    if (dimen) {
         if (dimen->len > G_N_ELEMENTS(info->dimen.d)) {
             client_raise(exception, EINVAL);
             return;
@@ -411,7 +411,7 @@ static void add_elems(ALSACtlClient *self, GType type,
         id.numid += i;
         id.index += i;
         elem = insert_elem_to_cache(self, type, &id, exception);
-        if (*exception != NULL) {
+        if (*exception) {
             /* Cacheed objects are released by I/O handler. */
             client_ioctl(self, SNDRV_CTL_IOCTL_ELEM_REMOVE, &info->id);
             break;
@@ -454,7 +454,7 @@ void alsactl_client_add_int_elems(ALSACtlClient *self, gint iface,
         type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 
     init_info(&info, type, iface, number, name, channels, dimen, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Type-specific information. */
@@ -492,7 +492,7 @@ void alsactl_client_add_bool_elems(ALSACtlClient *self, gint iface,
 
     init_info(&info, SNDRV_CTL_ELEM_TYPE_BOOLEAN, iface, number, name,
               channels, dimen, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     add_elems(self, SNDRV_CTL_ELEM_TYPE_BOOLEAN, &info, number, elems,
@@ -527,7 +527,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 
     init_info(&info, SNDRV_CTL_ELEM_TYPE_ENUMERATED, iface, number, name,
               channels, dimen, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Type-specific information. */
@@ -544,7 +544,7 @@ void alsactl_client_add_enum_elems(ALSACtlClient *self, gint iface,
 
     /* Allocate temporary buffer. */
     buf = malloc(len);
-    if (buf == NULL) {
+    if (!buf) {
         client_raise(exception, ENOMEM);
         return;
     }
@@ -586,7 +586,7 @@ void alsactl_client_add_byte_elems(ALSACtlClient *self, gint iface,
 
     init_info(&info, SNDRV_CTL_ELEM_TYPE_BYTES, iface, number, name, channels,
               dimen, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     add_elems(self, SNDRV_CTL_ELEM_TYPE_BYTES, &info, number, elems, exception);
@@ -612,7 +612,7 @@ void alsactl_client_add_iec60958_elems(ALSACtlClient *self, gint iface,
 
     init_info(&info, SNDRV_CTL_ELEM_TYPE_IEC958, iface, number, name, 1, NULL,
               exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     add_elems(self, SNDRV_CTL_ELEM_TYPE_IEC958, &info, number, elems,
@@ -628,7 +628,7 @@ void alsactl_client_remove_elem(ALSACtlClient *self, ALSACtlElem *elem)
     priv = alsactl_client_get_instance_private(self);
 
     g_mutex_lock(&priv->lock);
-    for (entry = priv->elems; entry != NULL; entry = entry->next) {
+    for (entry = priv->elems; entry; entry = entry->next) {
         if (entry->data != elem)
             continue;
 
@@ -669,7 +669,7 @@ static void handle_elem_event(ALSACtlClient *client, unsigned int event,
     /* Deliver the events to elements. */
     g_mutex_lock(&priv->lock);
     g_value_init(&val, G_TYPE_UINT);
-    for (entry = priv->elems; entry != NULL; entry = entry->next) {
+    for (entry = priv->elems; entry; entry = entry->next) {
         elem = (ALSACtlElem *)entry->data;
         if (!ALSACTL_IS_ELEM(elem))
             continue;
@@ -759,7 +759,7 @@ void alsactl_client_listen(ALSACtlClient *self, GError **exception)
     priv = alsactl_client_get_instance_private(self);
 
     src = g_source_new(&funcs, sizeof(CtlClientSource));
-    if (src == NULL) {
+    if (!src) {
         client_raise(exception, ENOMEM);
         return;
     }
@@ -791,7 +791,7 @@ void alsactl_client_unlisten(ALSACtlClient *self)
     g_return_if_fail(ALSACTL_IS_CLIENT(self));
     priv = alsactl_client_get_instance_private(self);
 
-    if (priv->src == NULL)
+    if (!priv->src)
         return;
 
     /* Be sure to unsubscribe events. */
@@ -955,7 +955,7 @@ static void ctl_elem_finalize(GObject *obj)
 
     /* Leave ownership to release this elemset. */
     alsactl_elem_unlock(self, &exception);
-    if (exception != NULL)
+    if (exception)
         g_error_free(exception);
 
     /* Remove this element as long as no processes owns. */

@@ -36,7 +36,7 @@ static void elem_int_update(ALSACtlElem *parent, GError **exception)
     priv = alsactl_elem_int_get_instance_private(self);
 
     alsactl_elem_info_ioctl(parent, &info, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     if (info.type == SNDRV_CTL_ELEM_TYPE_INTEGER) {
@@ -146,15 +146,14 @@ void alsactl_elem_int_read(ALSACtlElemInt *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
 
-    if ((values == NULL) ||
-         (g_array_get_element_size(values) != sizeof(guint64))) {
+    if (!values || (g_array_get_element_size(values) != sizeof(guint64))) {
         raise(exception, EINVAL);
         return;
     }
 
     alsactl_elem_value_ioctl(ALSACTL_ELEM(self), SNDRV_CTL_IOCTL_ELEM_READ,
                              &elem_val, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
 
@@ -214,8 +213,7 @@ void alsactl_elem_int_write(ALSACtlElemInt *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_INT(self));
 
-    if ((values == NULL) ||
-        (g_array_get_element_size(values) != sizeof(guint64)) ||
+    if (!values || (g_array_get_element_size(values) != sizeof(guint64)) ||
         values->len == 0) {
         raise(exception, EINVAL);
         return;

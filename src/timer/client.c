@@ -505,14 +505,14 @@ static void listen_client(ALSATimerClient *self, GError **exception)
     /* Keep a memory so as to store 10 events. */
     priv->len = sizeof(struct snd_timer_tread) * 10;
     priv->buf = g_malloc0(priv->len);
-    if (priv->buf == NULL) {
+    if (!priv->buf) {
         raise(exception, ENOMEM);
         return;
     }
 
     /* Create a source. */
     src = g_source_new(&funcs, sizeof(TimerClientSource));
-    if (src == NULL) {
+    if (!src) {
         raise(exception, ENOMEM);
         g_free(priv->buf);
         priv->len = 0;
@@ -559,7 +559,7 @@ void alsatimer_client_start(ALSATimerClient *self, GError **exception)
     }
 
     listen_client(self, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_START) < 0) {
@@ -595,7 +595,7 @@ void alsatimer_client_resume(ALSATimerClient *self, GError **exception)
     }
 
     listen_client(self, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     if (ioctl(priv->fd, SNDRV_TIMER_IOCTL_CONTINUE) < 0)

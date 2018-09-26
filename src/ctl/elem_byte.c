@@ -48,15 +48,14 @@ void alsactl_elem_byte_read(ALSACtlElemByte *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
 
-    if ((values == NULL) ||
-        (g_array_get_element_size(values) != sizeof(guint8))) {
+    if (!values || (g_array_get_element_size(values) != sizeof(guint8))) {
         raise(exception, EINVAL);
         return;
     }
 
     alsactl_elem_value_ioctl(ALSACTL_ELEM(self), SNDRV_CTL_IOCTL_ELEM_READ,
                              &elem_val, exception);
-    if (*exception != NULL)
+    if (*exception)
         return;
 
     /* Check the number of values in this element. */
@@ -88,8 +87,7 @@ void alsactl_elem_byte_write(ALSACtlElemByte *self, GArray *values,
 
     g_return_if_fail(ALSACTL_IS_ELEM_BYTE(self));
 
-    if ((values == NULL) ||
-        (g_array_get_element_size(values) != sizeof(guint8)) ||
+    if (!values || (g_array_get_element_size(values) != sizeof(guint8)) ||
         values->len == 0) {
         raise(exception, EINVAL);
         return;

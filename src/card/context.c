@@ -235,7 +235,7 @@ void alsa_context_reactant_add(ALSAContextReactant *reactant, uint32_t events,
             break;
     }
 
-    if (reactor == NULL) {
+    if (!reactor) {
         *err = -EINVAL;
         goto end;
     }
