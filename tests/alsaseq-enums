@@ -30,11 +30,30 @@ port_number_enumerators = (
     'OSS',
 )
 
+port_type_flags = (
+    'SPECIFIC',
+    'MIDI_GENERIC',
+    'MIDI_GM',
+    'MIDI_GS',
+    'MIDI_XG',
+    'MIDI_MT32',
+    'MIDI_GM2',
+    'SYNTH',
+    'DIRECT_SAMPLE',
+    'SAMPLE',
+    'HARDWARE',
+    'SOFTWARE',
+    'SYNTHESIZER',
+    'PORT',
+    'APPLICATION',
+)
+
 types = {
     ALSASeq.ClientNumberEnum:   client_number_enumerators,
     ALSASeq.ClientTypeEnum:     client_type_enumerators,
     ALSASeq.ClientFilterFlag:   client_filter_flags,
     ALSASeq.PortNumberEnum:     port_number_enumerators,
+    ALSASeq.PortTypeFlag:       port_type_flags,
 }
 
 for obj, types in types.items():

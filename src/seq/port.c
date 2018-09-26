@@ -74,7 +74,7 @@ static void seq_port_get_property(GObject *obj, guint id,
         g_value_set_string(val, priv->info.name);
         break;
     case SEQ_PORT_PROP_TYPE:
-        g_value_set_uint(val, priv->info.type);
+        g_value_set_flags(val, (ALSASeqPortTypeFlag)priv->info.type);
         break;
     case SEQ_PORT_PROP_CAPABILITY:
         g_value_set_uint(val, priv->info.capability);
@@ -137,7 +137,7 @@ static void seq_port_set_property(GObject *obj, guint id,
             sizeof(priv->info.name));
         break;
     case SEQ_PORT_PROP_TYPE:
-        priv->info.type = g_value_get_uint(val);
+        priv->info.type = (ALSASeqPortTypeFlag)g_value_get_flags(val);
         break;
     case SEQ_PORT_PROP_CAPABILITY:
         priv->info.capability = g_value_get_uint(val);
@@ -245,11 +245,11 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                             "port",
                             G_PARAM_READWRITE);
     seq_port_props[SEQ_PORT_PROP_TYPE] =
-        g_param_spec_uint("type", "type",
-                          "A bitmask of SND_SEQ_PORT_TYPE_XXX",
-                          0, UINT_MAX,
-                          0,
-                          G_PARAM_READWRITE);
+        g_param_spec_flags("type", "type",
+                           "A bitflag with ALSASeqPortTypeFlag values",
+                           ALSASEQ_TYPE_PORT_TYPE_FLAG,
+                           ALSASEQ_PORT_TYPE_FLAG_SPECIFIC,
+                           G_PARAM_READWRITE);
     seq_port_props[SEQ_PORT_PROP_CAPABILITY] =
         g_param_spec_uint("capabilities", "capabilities",
                           "A bitmask of SND_SEQ_PORT_CAP_XXX",
