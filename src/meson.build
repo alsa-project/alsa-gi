@@ -1,5 +1,5 @@
 modules = {
-  'ctl':      ['ALSACtl',     false,  false],
+  'ctl':      ['ALSACtl',     false,  true],
   'seq':      ['ALSASeq',     true,   false],
   'timer':    ['ALSATimer',   true,   false],
   'card':     ['ALSACard',    false,  false],
