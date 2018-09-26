@@ -1,6 +1,6 @@
 modules = {
   'ctl':      ['ALSACtl',     false,  true],
-  'seq':      ['ALSASeq',     true,   false],
+  'seq':      ['ALSASeq',     true,   true],
   'timer':    ['ALSATimer',   true,   false],
   'card':     ['ALSACard',    false,  false],
 }

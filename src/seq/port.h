@@ -6,6 +6,7 @@
 
 #include "client.h"
 #include "alsaseq_sigs_marshal.h"
+#include "alsaseq_enums.h"
 
 G_BEGIN_DECLS
 
