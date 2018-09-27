@@ -29,7 +29,7 @@ signal_marshallers = gnome.genmarshal(name + '_sigs_marshal',
 sources += signal_marshallers
 
 mapfile = name + '.map'
-vflag = '-Wl,--version-script,@0@/@1@'.format(meson.current_source_dir(), mapfile)
+vflag = '-Wl,--version-script,' + join_paths(meson.current_source_dir(), mapfile)
 
 library = library(name,
   sources: sources + headers,
