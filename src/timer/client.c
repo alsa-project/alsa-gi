@@ -287,7 +287,8 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
     /* Select system timer as a default. */
     alsatimer_client_select_timer(self, ALSATIMER_DEVICE_CLASS_ENUM_GLOBAL,
                                   ALSATIMER_DEVICE_SLAVE_CLASS_ENUM_NONE,
-                                  -1, SNDRV_TIMER_GLOBAL_SYSTEM, 0,
+                                  -1,
+				  ALSATIMER_GLOBAL_DEVICE_TYPE_ENUM_SYSTEM, 0,
                                   exception);
 }
 
@@ -346,15 +347,15 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
  * @class: A #ALSATimerDeviceClassEnum
  * @subclass: A #ALSATimerDeviceSlaveClassEnum
  * @card: a numerical value for card
- * @device: a numerical value for device
+ * @device: a numerical value for device. For global instance, one of
+ *          #ALSATimerGlobalDeviceEnum is available.
  * @subdevice: a numerical value for subdevice
  * @exception: A #GError
  */
 void alsatimer_client_select_timer(ALSATimerClient *self,
                                    ALSATimerDeviceClassEnum dev_class,
                                    ALSATimerDeviceSlaveClassEnum dev_sclass,
-                                   unsigned int card,
-                                   unsigned int device, unsigned int subdevice,
+                                   int card, int device, int subdevice,
                                    GError **exception)
 {
     ALSATimerClientPrivate *priv;

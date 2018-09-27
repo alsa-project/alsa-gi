@@ -11,6 +11,7 @@ V0_0_0 {
 
     "alsatimer_device_class_enum_get_type";
     "alsatimer_device_slave_class_enum_get_type";
+    "alsatimer_global_device_type_enum_get_type";
   local:
     *;
 };

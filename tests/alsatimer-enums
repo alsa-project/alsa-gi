@@ -20,9 +20,16 @@ device_slave_class_enumerators = (
     'OSS_SEQUENCER',
 )
 
+global_device_type_enumerators = (
+    'SYSTEM',
+    'HPET',
+    'HRTIMER',
+)
+
 types = {
     ALSATimer.DeviceClassEnum:      device_class_enumerators,
     ALSATimer.DeviceSlaveClassEnum: device_slave_class_enumerators,
+    ALSATimer.GlobalDeviceTypeEnum: global_device_type_enumerators,
 }
 
 for obj, types in types.items():
