@@ -14,6 +14,7 @@ V0_0_0 {
 
     "alsaseq_client_number_enum_get_type";
     "alsaseq_client_type_enum_get_type";
+    "alsaseq_client_filter_flag_get_type";
   local:
     *;
 };

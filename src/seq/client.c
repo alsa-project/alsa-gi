@@ -59,9 +59,8 @@ enum seq_client_prop {
     SEQ_CLIENT_PROP_NAME,
     SEQ_CLIENT_PROP_PORTS,
     SEQ_CLIENT_PROP_LOST,
-    /* Event filter parameters */
-    SEQ_CLIENT_PROP_BROADCAST_FILTER,
-    SEQ_CLIENT_PROP_ERROR_BOUNCE,
+    /* Event filter flags */
+    SEQ_CLIENT_PROP_EVENT_FILTER,
     /* Client pool information */
     SEQ_CLIENT_PROP_OUTPUT_POOL,
     SEQ_CLIENT_PROP_INPUT_POOL,
@@ -96,13 +95,8 @@ static void seq_client_get_property(GObject *obj, guint id,
     case SEQ_CLIENT_PROP_LOST:
         g_value_set_int(val, priv->info.event_lost);
         break;
-    case SEQ_CLIENT_PROP_BROADCAST_FILTER:
-        g_value_set_boolean(val,
-                priv->info.filter & SNDRV_SEQ_FILTER_BROADCAST);
-        break;
-    case SEQ_CLIENT_PROP_ERROR_BOUNCE:
-        g_value_set_boolean(val,
-                priv->info.filter & SNDRV_SEQ_FILTER_BOUNCE);
+    case SEQ_CLIENT_PROP_EVENT_FILTER:
+        g_value_set_enum(val, (ALSASeqClientFilterFlag)priv->info.filter);
         break;
     /* pool information */
     case SEQ_CLIENT_PROP_OUTPUT_POOL:
@@ -137,17 +131,8 @@ static void seq_client_set_property(GObject *obj, guint id,
         strncpy(priv->info.name, g_value_get_string(val),
             sizeof(priv->info.name));
         break;
-    case SEQ_CLIENT_PROP_BROADCAST_FILTER:
-        if (g_value_get_boolean(val))
-            priv->info.filter |= SNDRV_SEQ_FILTER_BROADCAST;
-        else
-            priv->info.filter &= ~SNDRV_SEQ_FILTER_BROADCAST;
-        break;
-    case SEQ_CLIENT_PROP_ERROR_BOUNCE:
-        if (g_value_get_boolean(val))
-            priv->info.filter |= SNDRV_SEQ_FILTER_BOUNCE;
-        else
-            priv->info.filter &= ~SNDRV_SEQ_FILTER_BOUNCE;
+    case SEQ_CLIENT_PROP_EVENT_FILTER:
+        priv->info.filter = (ALSASeqClientFilterFlag)g_value_get_enum(val);
         break;
     /* pool information */
     case SEQ_CLIENT_PROP_OUTPUT_POOL:
@@ -215,16 +200,12 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
                          0, INT_MAX,
                          0,
                          G_PARAM_READABLE);
-    seq_client_props[SEQ_CLIENT_PROP_BROADCAST_FILTER] =
-        g_param_spec_boolean("broadcast-filter", "broadcast-filter",
-                             "Receive broadcast event or not",
-                             FALSE,
-                             G_PARAM_READABLE);
-    seq_client_props[SEQ_CLIENT_PROP_ERROR_BOUNCE] =
-        g_param_spec_boolean("error-bounce", "error-bounce",
-                             "Receive error bounce event or not",
-                             FALSE,
-                             G_PARAM_READABLE);
+    seq_client_props[SEQ_CLIENT_PROP_EVENT_FILTER] =
+        g_param_spec_enum("event-filter", "event-filter",
+                          "Event filter of ALSASeqClientFilterFlag",
+                          ALSASEQ_TYPE_CLIENT_FILTER_FLAG,
+                          ALSASEQ_CLIENT_FILTER_FLAG_USE_EVENT,
+                          G_PARAM_READABLE);
     seq_client_props[SEQ_CLIENT_PROP_OUTPUT_POOL] =
         g_param_spec_int("output-pool", "output-pool",
                          "The size of pool for output",

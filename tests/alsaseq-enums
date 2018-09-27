@@ -17,9 +17,17 @@ client_type_enumerators = (
     'KERNEL_CLIENT',
 )
 
+client_filter_flags = (
+    'BROADCAST',
+    'MULTICAST',
+    'BOUNCE',
+    'USE_EVENT',
+)
+
 types = {
     ALSASeq.ClientNumberEnum:   client_number_enumerators,
     ALSASeq.ClientTypeEnum:     client_type_enumerators,
+    ALSASeq.ClientFilterFlag:   client_filter_flags,
 }
 
 for obj, types in types.items():
