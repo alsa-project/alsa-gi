@@ -25,4 +25,9 @@ typedef enum {
     ALSATIMER_GLOBAL_DEVICE_TYPE_ENUM_HRTIMER   = SNDRV_TIMER_GLOBAL_HRTIMER,
 } ALSATimerGlobalDeviceTypeEnum;
 
+typedef enum /*< flags >*/
+{
+    ALSATIMER_DEVICE_INFO_FLAG_SLAVE =  SNDRV_TIMER_FLG_SLAVE,
+} ALSATimerDeviceInfoFlag;
+
 #endif

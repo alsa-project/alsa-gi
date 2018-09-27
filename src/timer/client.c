@@ -46,7 +46,7 @@ enum timer_client_prop {
     /* snd_timer_info_t */
     TIMER_CLIENT_PROP_ID = 1,
     TIMER_CLIENT_PROP_NAME,
-    TIMER_CLIENT_PROP_IS_SLAVE,
+    TIMER_CLIENT_PROP_FLAGS,
     TIMER_CLIENT_PROP_CARD,
     TIMER_CLIENT_PROP_RESOLUTION,
     /* snd_timer_params_t */
@@ -80,9 +80,8 @@ static void timer_client_get_property(GObject *obj, guint id,
     case TIMER_CLIENT_PROP_NAME:
         g_value_set_string(val, (char *)priv->info.name);
         break;
-    case TIMER_CLIENT_PROP_IS_SLAVE:
-        g_value_set_boolean(val,
-                priv->info.flags & SNDRV_TIMER_FLG_SLAVE);
+    case TIMER_CLIENT_PROP_FLAGS:
+        g_value_set_flags(val, priv->info.flags);
         break;
     case TIMER_CLIENT_PROP_CARD:
         g_value_set_int(val, priv->info.card);
@@ -185,11 +184,13 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
                             "The name of timer for this client",
                             NULL,
                             G_PARAM_READABLE);
-    timer_client_props[TIMER_CLIENT_PROP_IS_SLAVE] = 
-        g_param_spec_boolean("is-slave", "is-slave",
-                             "Whether the timer of this client is slave or not",
-                             FALSE,
-                             G_PARAM_READABLE);
+    timer_client_props[TIMER_CLIENT_PROP_FLAGS] =
+        g_param_spec_flags("flags", "flags",
+                           "Flags of information for this instance with "
+                           "ALSATimerGlobalInfoFlag values",
+                           ALSATIMER_TYPE_DEVICE_INFO_FLAG,
+                           0,
+                           G_PARAM_READABLE);
     timer_client_props[TIMER_CLIENT_PROP_CARD] = 
         g_param_spec_int("card", "card",
                          "The card number of timer for this client",
