@@ -13,8 +13,16 @@ device_class_enumerators = (
     'PCM',
 )
 
+device_slave_class_enumerators = (
+    'NONE',
+    'APPLICATION',
+    'SEQUENCER',
+    'OSS_SEQUENCER',
+)
+
 types = {
     ALSATimer.DeviceClassEnum:      device_class_enumerators,
+    ALSATimer.DeviceSlaveClassEnum: device_slave_class_enumerators,
 }
 
 for obj, types in types.items():

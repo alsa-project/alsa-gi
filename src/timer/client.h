@@ -52,7 +52,7 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
                                      GError **exception);
 void alsatimer_client_select_timer(ALSATimerClient *self,
                                    ALSATimerDeviceClassEnum dev_class,
-                                   unsigned int subclass,
+                                   ALSATimerDeviceSlaveClassEnum dev_sclass,
                                    unsigned int card,
                                    unsigned int device, unsigned int subdevice,
                                    GError **exception);

@@ -10,6 +10,7 @@ V0_0_0 {
     "alsatimer_client_resume";
 
     "alsatimer_device_class_enum_get_type";
+    "alsatimer_device_slave_class_enum_get_type";
   local:
     *;
 };
