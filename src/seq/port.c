@@ -36,7 +36,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqPort, alsaseq_port, G_TYPE_OBJECT)
 enum seq_port_prop {
     SEQ_PORT_PROP_FD = 1,
     SEQ_PORT_PROP_CLIENT_NUMBER,
-    SEQ_PORT_PROP_ID,
+    SEQ_PORT_PROP_NUMBER,
     SEQ_PORT_PROP_NAME,
     SEQ_PORT_PROP_TYPE,
     SEQ_PORT_PROP_CAPABILITY,
@@ -67,8 +67,8 @@ static void seq_port_get_property(GObject *obj, guint id,
     ALSASeqPortPrivate *priv = alsaseq_port_get_instance_private(self);
 
     switch (id) {
-    case SEQ_PORT_PROP_ID:
-        g_value_set_uint(val, priv->info.addr.port);
+    case SEQ_PORT_PROP_NUMBER:
+        g_value_set_uchar(val, priv->info.addr.port);
         break;
     case SEQ_PORT_PROP_NAME:
         g_value_set_string(val, priv->info.name);
@@ -129,8 +129,8 @@ static void seq_port_set_property(GObject *obj, guint id,
     case SEQ_PORT_PROP_CLIENT_NUMBER:
         priv->info.addr.client = g_value_get_uchar(val);
         break;
-    case SEQ_PORT_PROP_ID:
-        priv->info.addr.port = g_value_get_uint(val);
+    case SEQ_PORT_PROP_NUMBER:
+        priv->info.addr.port = g_value_get_uchar(val);
         break;
     case SEQ_PORT_PROP_NAME:
         strncpy(priv->info.name, g_value_get_string(val),
@@ -232,12 +232,13 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                            0, UCHAR_MAX,
                            0,
                            G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
-    seq_port_props[SEQ_PORT_PROP_ID] =
-        g_param_spec_uint("id", "id",
-                          "The id of this port",
-                          0, INT_MAX,
-                          0,
-                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+    seq_port_props[SEQ_PORT_PROP_NUMBER] =
+        g_param_spec_uchar("number", "number",
+                           "An identical number of the port, including "
+                           "ALSASeqPortNumberEnum",
+                           0, UCHAR_MAX,
+                           0,
+                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
     seq_port_props[SEQ_PORT_PROP_NAME] =
         g_param_spec_string("name", "name",
                             "a pointer to name",

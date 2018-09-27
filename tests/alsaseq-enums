@@ -24,10 +24,17 @@ client_filter_flags = (
     'USE_EVENT',
 )
 
+port_number_enumerators = (
+    'SYSTEM',
+    'DUMMY',
+    'OSS',
+)
+
 types = {
     ALSASeq.ClientNumberEnum:   client_number_enumerators,
     ALSASeq.ClientTypeEnum:     client_type_enumerators,
     ALSASeq.ClientFilterFlag:   client_filter_flags,
+    ALSASeq.PortNumberEnum:     port_number_enumerators,
 }
 
 for obj, types in types.items():
