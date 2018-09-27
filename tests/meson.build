@@ -1,6 +1,7 @@
 tests = [
   ['alsactl-enums',     'ALSACtl'],
   ['alsaseq-enums',     'ALSASeq'],
+  ['alsatimer-enums',   'ALSATimer'],
 ]
 
 objdir = join_paths(meson.build_root(), 'src')

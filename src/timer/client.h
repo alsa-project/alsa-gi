@@ -2,6 +2,7 @@
 #define __ALSA_GOBJECT_ALSATIMER_CLIENT_H__
 
 #include <glib-object.h>
+#include "alsatimer_enums.h"
 
 G_BEGIN_DECLS
 
