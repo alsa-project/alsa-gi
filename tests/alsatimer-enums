@@ -30,11 +30,18 @@ device_info_flags = (
     'SLAVE',
 )
 
+device_param_flags = (
+    'AUTO',
+    'EXCLUSIVE',
+    'EARLY_EVENT',
+)
+
 types = {
     ALSATimer.DeviceClassEnum:      device_class_enumerators,
     ALSATimer.DeviceSlaveClassEnum: device_slave_class_enumerators,
     ALSATimer.GlobalDeviceTypeEnum: global_device_type_enumerators,
     ALSATimer.DeviceInfoFlag:       device_info_flags,
+    ALSATimer.DeviceParamFlag:      device_param_flags,
 }
 
 for obj, types in types.items():

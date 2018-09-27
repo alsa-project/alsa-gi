@@ -50,9 +50,7 @@ enum timer_client_prop {
     TIMER_CLIENT_PROP_CARD,
     TIMER_CLIENT_PROP_RESOLUTION,
     /* snd_timer_params_t */
-    TIMER_CLIENT_PROP_AUTO_START,
-    TIMER_CLIENT_PROP_EXCLUSIVE,
-    TIMER_CLIENT_PROP_EARLY_EVENT,
+    TIMER_CLIENT_PROP_PARAMS,
     TIMER_CLIENT_PROP_TICKS,
     TIMER_CLIENT_PROP_QUEUE_SIZE,
     TIMER_CLIENT_PROP_FILTER,
@@ -89,17 +87,8 @@ static void timer_client_get_property(GObject *obj, guint id,
     case TIMER_CLIENT_PROP_RESOLUTION:
         g_value_set_long(val, priv->info.resolution);
         break;
-    case TIMER_CLIENT_PROP_AUTO_START:
-        g_value_set_boolean(val,
-                priv->params.flags & SNDRV_TIMER_PSFLG_AUTO);
-        break;
-    case TIMER_CLIENT_PROP_EXCLUSIVE:
-        g_value_set_boolean(val,
-            priv->params.flags & SNDRV_TIMER_PSFLG_EXCLUSIVE);
-        break;
-    case TIMER_CLIENT_PROP_EARLY_EVENT:
-        g_value_set_boolean(val,
-            priv->params.flags & SNDRV_TIMER_PSFLG_EARLY_EVENT);
+    case TIMER_CLIENT_PROP_PARAMS:
+        g_value_set_flags(val, (ALSATimerDeviceParamFlag)priv->params.flags);
         break;
     case TIMER_CLIENT_PROP_TICKS:
         g_value_set_long(val, priv->params.ticks);
@@ -123,23 +112,8 @@ static void timer_client_set_property(GObject *obj, guint id,
     ALSATimerClientPrivate *priv = alsatimer_client_get_instance_private(self);
 
     switch(id) {
-    case TIMER_CLIENT_PROP_AUTO_START:
-        if (g_value_get_boolean(val))
-            priv->params.flags |= SNDRV_TIMER_PSFLG_AUTO;
-        else
-            priv->params.flags &= ~SNDRV_TIMER_PSFLG_AUTO;
-        break;
-    case TIMER_CLIENT_PROP_EXCLUSIVE:
-        if (g_value_get_boolean(val))
-            priv->params.flags |= SNDRV_TIMER_PSFLG_EXCLUSIVE;
-        else
-            priv->params.flags &= ~SNDRV_TIMER_PSFLG_EXCLUSIVE;
-        break;
-    case TIMER_CLIENT_PROP_EARLY_EVENT:
-        if (g_value_get_boolean(val))
-            priv->params.flags |= SNDRV_TIMER_PSFLG_EARLY_EVENT;
-        else
-            priv->params.flags &= ~SNDRV_TIMER_PSFLG_EARLY_EVENT;
+    case TIMER_CLIENT_PROP_PARAMS:
+        priv->params.flags = g_value_get_flags(val);
         break;
     case TIMER_CLIENT_PROP_TICKS:
         priv->params.ticks = g_value_get_long(val);
@@ -203,21 +177,13 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
                           -1, LONG_MAX,
                           0,
                           G_PARAM_READABLE);
-    timer_client_props[TIMER_CLIENT_PROP_AUTO_START] = 
-        g_param_spec_boolean("auto-start", "auto-start",
-                             "Automatically restart or not",
-                             FALSE,
-                             G_PARAM_READWRITE);
-    timer_client_props[TIMER_CLIENT_PROP_EXCLUSIVE] = 
-        g_param_spec_boolean("exclusive", "exclusive",
-                             "Exclusively keep the timer",
-                             FALSE,
-                             G_PARAM_READWRITE);
-    timer_client_props[TIMER_CLIENT_PROP_EARLY_EVENT] = 
-        g_param_spec_boolean("early-event", "early-event",
-                             "Generate initial event or not",
-                             FALSE,
-                             G_PARAM_READWRITE);
+    timer_client_props[TIMER_CLIENT_PROP_PARAMS] =
+        g_param_spec_flags("params", "params",
+                           "Flags in parameter, with ALSATimerDeviceParamFlag "
+			   "values",
+                           ALSATIMER_TYPE_DEVICE_PARAM_FLAG,
+                           0,
+                           G_PARAM_READWRITE);
     timer_client_props[TIMER_CLIENT_PROP_TICKS] = 
         g_param_spec_long("ticks", "ticks",
                           "The number of ticks for this client",
