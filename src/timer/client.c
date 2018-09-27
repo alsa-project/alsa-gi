@@ -97,7 +97,7 @@ static void timer_client_get_property(GObject *obj, guint id,
         g_value_set_long(val, priv->params.queue_size);
         break;
     case TIMER_CLIENT_PROP_FILTER:
-        g_value_set_uint(val, priv->params.filter);
+        g_value_set_flags(val, priv->params.filter);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, id, spec);
@@ -122,7 +122,7 @@ static void timer_client_set_property(GObject *obj, guint id,
         priv->params.queue_size = g_value_get_long(val);
         break;
     case TIMER_CLIENT_PROP_FILTER:
-        priv->params.filter = g_value_get_uint(val);
+        priv->params.filter = g_value_get_flags(val);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
@@ -197,11 +197,12 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
                           128,
                           G_PARAM_READWRITE);
     timer_client_props[TIMER_CLIENT_PROP_FILTER] = 
-        g_param_spec_uint("filter", "filter",
-                          "The bit flag for event filter",
-                          0, UINT_MAX,
-                          0,
-                          G_PARAM_READWRITE);
+        g_param_spec_flags("filter", "filter",
+                           "The bitflag as event filter wich "
+                           "ALSATimerEventTypeFlag values",
+                           ALSATIMER_TYPE_EVENT_TYPE_FLAG,
+                           0,
+                           G_PARAM_READWRITE);
 
     timer_client_sigs[TIMER_CLIENT_SIG_EVENT] =
         g_signal_new("event",
@@ -209,9 +210,10 @@ static void alsatimer_client_class_init(ALSATimerClientClass *klass)
                      G_SIGNAL_RUN_LAST,
                      0,
                      NULL, NULL,
-                     alsatimer_sigs_marshal_VOID__STRING_LONG_LONG_UINT,
+                     alsatimer_sigs_marshal_VOID__FLAGS_LONG_LONG_UINT,
                      G_TYPE_NONE, 4,
-                     G_TYPE_STRING, G_TYPE_LONG, G_TYPE_LONG, G_TYPE_UINT);
+                     ALSATIMER_TYPE_EVENT_TYPE_FLAG, G_TYPE_LONG, G_TYPE_LONG,
+                     G_TYPE_UINT);
 
     g_object_class_install_properties(gobject_class, TIMER_CLIENT_PROP_COUNT,
                                       timer_client_props);
@@ -395,24 +397,6 @@ static gboolean prepare_src(GSource *gsrc, gint *timeout)
     return FALSE;
 }
 
-static const char *const ev_name[] = {
-    [SNDRV_TIMER_EVENT_RESOLUTION]  = "resolution",
-    [SNDRV_TIMER_EVENT_TICK]        = "tick",
-    [SNDRV_TIMER_EVENT_START]       = "start",
-    [SNDRV_TIMER_EVENT_STOP]        = "stop",
-    [SNDRV_TIMER_EVENT_CONTINUE]    = "continue",
-    [SNDRV_TIMER_EVENT_PAUSE]       = "pause",
-    [SNDRV_TIMER_EVENT_EARLY]       = "early",
-    [SNDRV_TIMER_EVENT_SUSPEND]     = "suspend",
-    [SNDRV_TIMER_EVENT_RESUME]      = "resume",
-    [SNDRV_TIMER_EVENT_MSTART]      = "master-start",
-    [SNDRV_TIMER_EVENT_MSTOP]       = "master-stop",
-    [SNDRV_TIMER_EVENT_MCONTINUE]   = "master-continue",
-    [SNDRV_TIMER_EVENT_MPAUSE]      = "master-pause",
-    [SNDRV_TIMER_EVENT_MSUSPEND]    = "master-suspend",
-    [SNDRV_TIMER_EVENT_MRESUME]     = "master-resume",
-};
-
 static gboolean check_src(GSource *gsrc)
 {
     TimerClientSource *src = (TimerClientSource *)gsrc;
@@ -437,7 +421,7 @@ static gboolean check_src(GSource *gsrc)
         if (ev->event <= SNDRV_TIMER_EVENT_MRESUME) {
             g_signal_emit(self,
                       timer_client_sigs[TIMER_CLIENT_SIG_EVENT],
-                      0, ev_name[ev->event], ev->tstamp.tv_sec,
+                      0, ev->event, ev->tstamp.tv_sec,
                       ev->tstamp.tv_nsec, ev->val);
         }
         len -= sizeof(struct snd_timer_tread);

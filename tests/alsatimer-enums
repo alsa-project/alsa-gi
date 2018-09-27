@@ -36,12 +36,31 @@ device_param_flags = (
     'EARLY_EVENT',
 )
 
+event_type_flag = (
+    'RESOLUTION',
+    'TICK',
+    'START',
+    'STOP',
+    'CONTINUE',
+    'PAUSE',
+    'EARLY',
+    'SUSPEND',
+    'RESUME',
+    'MSTART',
+    'MSTOP',
+    'MCONTINUE',
+    'MPAUSE',
+    'MSUSPEND',
+    'MRESUME',
+)
+
 types = {
     ALSATimer.DeviceClassEnum:      device_class_enumerators,
     ALSATimer.DeviceSlaveClassEnum: device_slave_class_enumerators,
     ALSATimer.GlobalDeviceTypeEnum: global_device_type_enumerators,
     ALSATimer.DeviceInfoFlag:       device_info_flags,
     ALSATimer.DeviceParamFlag:      device_param_flags,
+    ALSATimer.EventTypeFlag:        event_type_flag,
 }
 
 for obj, types in types.items():

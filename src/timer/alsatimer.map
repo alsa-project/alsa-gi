@@ -14,6 +14,7 @@ V0_0_0 {
     "alsatimer_global_device_type_enum_get_type";
     "alsatimer_device_info_flag_get_type";
     "alsatimer_device_param_flag_get_type";
+    "alsatimer_event_type_flag_get_type";
   local:
     *;
 };
