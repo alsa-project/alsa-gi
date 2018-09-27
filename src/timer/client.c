@@ -285,8 +285,7 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
     }
 
     /* Select system timer as a default. */
-    alsatimer_client_select_timer(self,
-                                  SNDRV_TIMER_CLASS_GLOBAL,
+    alsatimer_client_select_timer(self, ALSATIMER_DEVICE_CLASS_ENUM_GLOBAL,
                                   SNDRV_TIMER_SCLASS_NONE,
                                   -1, SNDRV_TIMER_GLOBAL_SYSTEM, 0,
                                   exception);
@@ -344,7 +343,7 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
 /**
  * alsatimer_client_assign_timer:
  * @self: A #ALSATimerClient
- * @class: a numerical value for class
+ * @class: A #ALSATimerDeviceClassEnum
  * @subclass: a numerical value for subclass
  * @card: a numerical value for card
  * @device: a numerical value for device
@@ -352,7 +351,8 @@ void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
  * @exception: A #GError
  */
 void alsatimer_client_select_timer(ALSATimerClient *self,
-                                   unsigned int class, unsigned int subclass,
+                                   ALSATimerDeviceClassEnum dev_class,
+                                   unsigned int subclass,
                                    unsigned int card,
                                    unsigned int device, unsigned int subdevice,
                                    GError **exception)
@@ -363,7 +363,7 @@ void alsatimer_client_select_timer(ALSATimerClient *self,
     g_return_if_fail(ALSATIMER_IS_CLIENT(self));
     priv = alsatimer_client_get_instance_private(self);
 
-    target.id.dev_class = class;
+    target.id.dev_class = dev_class;
     target.id.dev_sclass = subclass;
     target.id.card = card;
     target.id.device = device;

@@ -51,7 +51,8 @@ void alsatimer_client_open(ALSATimerClient *self, gchar *path,
 void alsatimer_client_get_timer_list(ALSATimerClient *self, GArray *list,
                                      GError **exception);
 void alsatimer_client_select_timer(ALSATimerClient *self,
-                                   unsigned int class, unsigned int subclass,
+                                   ALSATimerDeviceClassEnum dev_class,
+                                   unsigned int subclass,
                                    unsigned int card,
                                    unsigned int device, unsigned int subdevice,
                                    GError **exception);
