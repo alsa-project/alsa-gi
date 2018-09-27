@@ -3,4 +3,10 @@
 
 #include <sound/asequencer.h>
 
+typedef enum {
+    ALSASEQ_CLIENT_NUMBER_ENUM_SYSTEM   = SNDRV_SEQ_CLIENT_SYSTEM,
+    ALSASEQ_CLIENT_NUMBER_ENUM_DUMMY    = SNDRV_SEQ_CLIENT_DUMMY,
+    ALSASEQ_CLIENT_NUMBER_ENUM_OSS      = SNDRV_SEQ_CLIENT_OSS,
+} ALSASeqClientNumberEnum;
+
 #endif

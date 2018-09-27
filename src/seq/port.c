@@ -35,7 +35,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqPort, alsaseq_port, G_TYPE_OBJECT)
 
 enum seq_port_prop {
     SEQ_PORT_PROP_FD = 1,
-    SEQ_PORT_PROP_CLIENT,
+    SEQ_PORT_PROP_CLIENT_NUMBER,
     SEQ_PORT_PROP_ID,
     SEQ_PORT_PROP_NAME,
     SEQ_PORT_PROP_TYPE,
@@ -126,8 +126,8 @@ static void seq_port_set_property(GObject *obj, guint id,
     case SEQ_PORT_PROP_FD:
         priv->fd = g_value_get_int(val);
         break;
-    case SEQ_PORT_PROP_CLIENT:
-        priv->info.addr.client = g_value_get_uint(val);
+    case SEQ_PORT_PROP_CLIENT_NUMBER:
+        priv->info.addr.client = g_value_get_uchar(val);
         break;
     case SEQ_PORT_PROP_ID:
         priv->info.addr.port = g_value_get_uint(val);
@@ -225,12 +225,13 @@ static void alsaseq_port_class_init(ALSASeqPortClass *klass)
                          INT_MIN, INT_MAX,
                          -1,
                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
-    seq_port_props[SEQ_PORT_PROP_CLIENT] =
-        g_param_spec_uint("client", "client",
-                          "The owner of this port",
-                          0, INT_MAX,
-                          0,
-                          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+    seq_port_props[SEQ_PORT_PROP_CLIENT_NUMBER] =
+        g_param_spec_uchar("client-number", "client-number",
+                           "An identical number of connected client, including "
+                           "ALSASeqClientNumberEnum",
+                           0, UCHAR_MAX,
+                           0,
+                           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
     seq_port_props[SEQ_PORT_PROP_ID] =
         g_param_spec_uint("id", "id",
                           "The id of this port",

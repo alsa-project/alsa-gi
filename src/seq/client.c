@@ -54,7 +54,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(ALSASeqClient, alsaseq_client, G_TYPE_OBJECT)
 
 enum seq_client_prop {
     /* Client information */
-    SEQ_CLIENT_PROP_ID = 1,
+    SEQ_CLIENT_PROP_NUMBER = 1,
     SEQ_CLIENT_PROP_TYPE,
     SEQ_CLIENT_PROP_NAME,
     SEQ_CLIENT_PROP_PORTS,
@@ -81,8 +81,8 @@ static void seq_client_get_property(GObject *obj, guint id,
 
     switch (id) {
     /* client information */
-    case SEQ_CLIENT_PROP_ID:
-        g_value_set_int(val, priv->info.client);
+    case SEQ_CLIENT_PROP_NUMBER:
+        g_value_set_uchar(val, priv->info.client);
         break;
     case SEQ_CLIENT_PROP_TYPE:
         g_value_set_int(val, priv->info.type);
@@ -184,12 +184,13 @@ static void alsaseq_client_class_init(ALSASeqClientClass *klass)
     gobject_class->set_property = seq_client_set_property;
     gobject_class->finalize = seq_client_finalize;
 
-    seq_client_props[SEQ_CLIENT_PROP_ID] =
-        g_param_spec_int("id", "id",
-                         "The id for this client",
-                         0, INT_MAX,
-                         0,
-                         G_PARAM_READABLE);
+    seq_client_props[SEQ_CLIENT_PROP_NUMBER] =
+        g_param_spec_uchar("number", "number",
+                           "An identical number of this client, including "
+                           "ALSASeqClientNumberEnum",
+                           0, UCHAR_MAX,
+                           0,
+                           G_PARAM_READABLE);
     seq_client_props[SEQ_CLIENT_PROP_TYPE] =
         g_param_spec_int("type", "type",
                          "The type for this client",

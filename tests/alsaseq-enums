@@ -5,7 +5,14 @@ import gi
 gi.require_version('ALSASeq', '0.0')
 from gi.repository import ALSASeq
 
+client_number_enumerators = (
+    'SYSTEM',
+    'DUMMY',
+    'OSS',
+)
+
 types = {
+    ALSASeq.ClientNumberEnum:   client_number_enumerators,
 }
 
 for obj, types in types.items():
