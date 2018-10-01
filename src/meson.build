@@ -3,6 +3,7 @@ modules = {
   'seq':      ['ALSASeq',     true,   true],
   'timer':    ['ALSATimer',   true,   true],
   'card':     ['ALSACard',    false,  false],
+  'rawmidi':  ['ALSARawmidi', false,  true],
 }
 
 foreach path, params: modules
