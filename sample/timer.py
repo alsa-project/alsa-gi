@@ -2,7 +2,8 @@
 
 import sys
 
-# ALSATimer-1.0 gir
+import gi
+gi.require_version('ALSATimer', '0.0')
 from gi.repository import ALSATimer
 
 # For event loop
@@ -29,17 +30,9 @@ except Exception as e:
 print(' Name:   {0}'.format(client.get_property('name')))
 print('  Information:')
 print('   id:           {0}'.format(client.get_property('id')))
-print('   is-slave:     {0}'.format(client.get_property('is-slave')))
 print('   card:         {0}'.format(client.get_property('card')))
 print('   resolution:   {0}'.format(client.get_property('resolution')))
-
-print('  Parameters:')
-print('   auto-start:   {0}'.format(client.get_property('auto-start')))
-print('   exclusive:    {0}'.format(client.get_property('exclusive')))
-print('   early-event:  {0}'.format(client.get_property('early-event')))
-print('   ticks:        {0}'.format(client.get_property('ticks')))
-print('   queue-size:   {0}'.format(client.get_property('queue-size')))
-print('   filter:       {0}'.format(client.get_property('filter')))
+print('   params:       {0}'.format(client.get_property('params')))
 
 try:
     status = client.get_status()
@@ -65,17 +58,37 @@ def handle_event(client, event, sec, nsec, value):
     print('     nsec:     {0}'.format(nsec))
     print('    value:     {0}'.format(value))
 
-client.set_property('auto-start', True)
-client.set_property('exclusive', True)
-client.set_property('early-event', False)
+params = client.get_property('params')
+params |= ALSATimer.DeviceParamFlag.AUTO
+params |= ALSATimer.DeviceParamFlag.EXCLUSIVE
+params &= ~ALSATimer.DeviceParamFlag.EARLY_EVENT
+client.set_property('params', params)
+
 client.set_property('ticks', 500)
-client.set_property('filter', 0xbf)
+
+filter = client.get_property('filter')
+filter |= ALSATimer.EventTypeFlag.RESOLUTION
+filter |= ALSATimer.EventTypeFlag.TICK
+filter |= ALSATimer.EventTypeFlag.START
+filter |= ALSATimer.EventTypeFlag.STOP
+filter |= ALSATimer.EventTypeFlag.CONTINUE
+filter |= ALSATimer.EventTypeFlag.PAUSE
+filter |= ALSATimer.EventTypeFlag.EARLY
+filter |= ALSATimer.EventTypeFlag.SUSPEND
+filter |= ALSATimer.EventTypeFlag.RESUME
+filter |= ALSATimer.EventTypeFlag.MSTART
+filter |= ALSATimer.EventTypeFlag.MSTOP
+filter |= ALSATimer.EventTypeFlag.MCONTINUE
+filter |= ALSATimer.EventTypeFlag.MPAUSE
+filter |= ALSATimer.EventTypeFlag.MSUSPEND
+filter |= ALSATimer.EventTypeFlag.MRESUME
+client.set_property('filter', filter)
+
 client.connect('event', handle_event)
 
 print('  Changed parameters:')
-print('   auto-start:   {0}'.format(client.get_property('auto-start')))
-print('   exclusive:    {0}'.format(client.get_property('exclusive')))
-print('   early-event:  {0}'.format(client.get_property('early-event')))
+params = client.get_property('params')
+print('   params:       {0}'.format(params))
 print('   ticks:        {0}'.format(client.get_property('ticks')))
 print('   queue-size:   {0}'.format(client.get_property('queue-size')))
 print('   filter:       {0}'.format(client.get_property('filter')))

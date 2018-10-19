@@ -2,7 +2,8 @@
 
 import sys
 
-# ALSASeq-1.0 gir
+import gi
+gi.require_version('ALSASeq', '0.0')
 from gi.repository import ALSASeq
 
 # For event loop
@@ -22,8 +23,7 @@ except Exception as e:
     sys.exit()
 
 print(' Name:           {0}'.format(client.get_property('name')))
-print('  id:            {0}'.format(client.get_property('id')))
-print('  type:          {0}'.format(client.get_property('type')))
+print('  type:          {0}'.format(client.get_property('type').value_nick))
 print('  ports:         {0}'.format(client.get_property('ports')))
 print('  lost:          {0}'.format(client.get_property('lost')))
 print('  output pool:   {0}'.format(client.get_property('output-pool')))
@@ -31,9 +31,6 @@ print('  input pool:    {0}'.format(client.get_property('input-pool')))
 print('  output room:   {0}'.format(client.get_property('output-room')))
 print('  output free:   {0}'.format(client.get_property('output-free')))
 print('  input free:    {0}'.format(client.get_property('input-free')))
-print('  broadcast:     {0}'.format(client.get_property('broadcast-filter')))
-print('  error bounce:  {0}'.format(client.get_property('error-bounce')))
-
 
 try:
     client.update()
@@ -53,8 +50,29 @@ for i in range(len(my_ports)):
         print(e)
         sys.exit(1)
 
-    my_ports[i].set_property('type', (1 << 20) | (1 << 17) | (1 << 1))
-    my_ports[i].set_property('capabilities', 0x7f)
+    types = my_ports[i].get_property('type')
+    types |= ALSASeq.PortTypeFlag.MIDI_GENERIC
+    types |= ALSASeq.PortTypeFlag.SOFTWARE
+    types |= ALSASeq.PortTypeFlag.APPLICATION
+    my_ports[i].set_property('type', types)
+
+    caps = my_ports[i].get_property('capabilities')
+    caps |= ALSASeq.PortCapFlag.READ
+    caps |= ALSASeq.PortCapFlag.WRITE
+    caps |= ALSASeq.PortCapFlag.SYNC_READ
+    caps |= ALSASeq.PortCapFlag.SYNC_WRITE
+    caps |= ALSASeq.PortCapFlag.DUPLEX
+    caps |= ALSASeq.PortCapFlag.SUBS_READ
+    caps |= ALSASeq.PortCapFlag.SUBS_WRITE
+    caps |= ALSASeq.PortCapFlag.NO_EXPORT
+    my_ports[i].set_property('capabilities', caps)
+
+    cond_flags = my_ports[i].get_property('cond-flags')
+    cond_flags |= ALSASeq.PortCondFlag.GIVEN_PORT
+    cond_flags |= ALSASeq.PortCondFlag.TIMESTAMP
+    cond_flags |= ALSASeq.PortCondFlag.TIME_REAL
+    my_ports[i].set_property('cond-flags', cond_flags)
+
     my_ports[i].update()
 
 client.update()
@@ -86,17 +104,14 @@ for port in ports:
     port.connect('event', handle_event)
 
     print(' Name: {0}'.format(port.get_property('name')))
-    print('  id:            {0}'.format(port.get_property('id')))
+    print('  number:        {0}'.format(port.get_property('number')))
     print('  type:          0 -> {0}'.format(port.get_property('type')))
     print('  capabilities:  {0}'.format(port.get_property('capabilities')))
     print('  midi channels: {0}'.format(port.get_property('midi-channels')))
     print('  midi voices:   {0}'.format(port.get_property('midi-voices')))
     print('  synth voices:  {0}'.format(port.get_property('synth-voices')))
-    print('  port specified:{0}'.format(
-                                    port.get_property('port-specified')))
-    print('  timestamping:  {0}'.format(port.get_property('timestamping')))
-    print('  timestamp queue: {0}'.format(
-                                    port.get_property('timestamp-queue')))
+    print('  cond-flags:    {0}'.format(port.get_property('cond-flags')))
+    print('  timestamp queue: {0}'.format(port.get_property('timestamp-queue')))
     print('  read use:      {0}'.format(port.get_property('read-use')))
     print('  write use:     {0}'.format(port.get_property('write-use')))
     print('')

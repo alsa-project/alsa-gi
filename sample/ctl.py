@@ -2,7 +2,8 @@
 
 import sys
 
-# ALSACtl-1.0 gir
+import gi
+gi.require_version('ALSACtl', '0.0')
 from gi.repository import ALSACtl
 
 # For event loop
@@ -117,9 +118,8 @@ except Exception as e:
     sys.exit()
 
 # Print element and its properties
-properties = ('id', 'type', 'iface', 'device', 'subdevice', 'channels',
-              'readable', 'writable', 'volatile', 'inactive', 'locked',
-              'is-owned', 'is-user', 'dimension')
+properties = ('type', 'channels', 'name', 'id', 'iface', 'device', 'subdevice',
+              'access')
 for i in element_list:
     try:
         element = client.get_elem(i);
