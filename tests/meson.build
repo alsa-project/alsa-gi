@@ -1,4 +1,5 @@
 tests = [
+  ['alsactl-client',    'ALSACtl'],
   ['alsactl-enums',     'ALSACtl'],
   ['alsaseq-enums',     'ALSASeq'],
   ['alsatimer-enums',   'ALSATimer'],
