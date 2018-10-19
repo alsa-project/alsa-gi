@@ -4,6 +4,7 @@ tests = [
   ['alsaseq-client',    'ALSASeq'],
   ['alsaseq-port',      'ALSASeq'],
   ['alsaseq-enums',     'ALSASeq'],
+  ['alsatimer-client',  'ALSATimer'],
   ['alsatimer-enums',   'ALSATimer'],
   ['alsarawmidi-enums', 'ALSARawmidi'],
 ]
