@@ -1,12 +1,46 @@
 V0_0_0 {
   global:
-    "alsactl_elem_get_type";
     "alsactl_client_get_type";
+    "alsactl_client_open";
+    "alsactl_client_listen";
+    "alsactl_client_unlisten";
+    "alsactl_client_get_elem_list";
+    "alsactl_client_get_elem";
+    "alsactl_client_add_int_elems";
+    "alsactl_client_add_bool_elems";
+    "alsactl_client_add_enum_elems";
+    "alsactl_client_add_byte_elems";
+    "alsactl_client_add_iec60958_elems";
+    "alsactl_client_remove_elem";
+
+    "alsactl_elem_get_type";
+    "alsactl_elem_update";
+    "alsactl_elem_lock";
+    "alsactl_elem_unlock";
+
     "alsactl_elem_bool_get_type";
+    "alsactl_elem_bool_update";
+    "alsactl_elem_bool_read";
+    "alsactl_elem_bool_write";
+
     "alsactl_elem_byte_get_type";
+    "alsactl_elem_byte_update";
+    "alsactl_elem_byte_read";
+    "alsactl_elem_byte_write";
+
     "alsactl_elem_enum_get_type";
+    "alsactl_elem_enum_get_labels";
+    "alsactl_elem_enum_read";
+    "alsactl_elem_enum_write";
+
     "alsactl_elem_iec60958_get_type";
+
     "alsactl_elem_int_get_type";
+    "alsactl_elem_int_get_max";
+    "alsactl_elem_int_get_min";
+    "alsactl_elem_int_get_step";
+    "alsactl_elem_int_read";
+    "alsactl_elem_int_write";
   local:
     *;
 };
