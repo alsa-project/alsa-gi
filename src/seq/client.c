@@ -360,8 +360,8 @@ static ALSASeqPort *add_port(ALSASeqClient *self,
     port = g_object_new(ALSASEQ_TYPE_PORT,
                         "fd", priv->fd,
                         "name", info->name,
-                        "client", info->addr.client,
-                        "id", info->addr.port,
+                        "client-number", info->addr.client,
+                        "number", info->addr.port,
                         NULL);
     port->_client = g_object_ref(self);
 
@@ -601,7 +601,7 @@ static void read_messages(ALSASeqClientPrivate *priv)
         for (entry = priv->ports; entry; entry = entry->next) {
             port = (ALSASeqPort *)entry->data;
 
-            g_object_get_property(G_OBJECT(port), "id", &val);
+            g_object_get_property(G_OBJECT(port), "number", &val);
             if (priv->read_ev[i].dest.port != g_value_get_int(&val))
                 continue;
 
