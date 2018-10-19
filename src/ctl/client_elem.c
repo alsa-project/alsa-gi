@@ -55,7 +55,6 @@ static GParamSpec *ctl_client_props[CTL_CLIENT_PROP_COUNT] = {NULL, };
 /* This object has one signal. */
 enum ctl_client_sig_type {
     CTL_CLIENT_SIG_ADDED = 0,
-    CTL_CLIENT_SIG_INSERT,
     CTL_CLIENT_SIG_COUNT,
 };
 static guint ctl_client_sigs[CTL_CLIENT_SIG_COUNT] = { 0 };
