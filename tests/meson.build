@@ -2,6 +2,7 @@ tests = [
   ['alsactl-client',    'ALSACtl'],
   ['alsactl-enums',     'ALSACtl'],
   ['alsaseq-client',    'ALSASeq'],
+  ['alsaseq-port',      'ALSASeq'],
   ['alsaseq-enums',     'ALSASeq'],
   ['alsatimer-enums',   'ALSATimer'],
   ['alsarawmidi-enums', 'ALSARawmidi'],
