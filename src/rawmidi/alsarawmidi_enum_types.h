@@ -3,4 +3,9 @@
 
 #include <sound/asound.h>
 
+typedef enum {
+    ALSARAWMIDI_STREAM_ENUM_OUTPUT  = SNDRV_RAWMIDI_STREAM_OUTPUT,
+    ALSARAWMIDI_STREAM_ENUM_INPUT   = SNDRV_RAWMIDI_STREAM_INPUT,
+} ALSARawmidiStreamEnum;
+
 #endif

@@ -1,6 +1,6 @@
 V0_0_0 {
   global:
-    *;
+    alsarawmidi_stream_enum_get_type;
   local:
     *;
 };

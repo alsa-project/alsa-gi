@@ -5,7 +5,13 @@ import gi
 gi.require_version('ALSARawmidi', '0.0')
 from gi.repository import ALSARawmidi
 
+stream_enumerators = (
+    'OUTPUT',
+    'INPUT',
+)
+
 types = {
+    ALSARawmidi.StreamEnum: stream_enumerators,
 }
 
 for obj, types in types.items():
