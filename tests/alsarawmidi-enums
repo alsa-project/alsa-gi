@@ -10,8 +10,15 @@ stream_enumerators = (
     'INPUT',
 )
 
+info_flags = (
+    'OUTPUT',
+    'INPUT',
+    'DUPLEX',
+)
+
 types = {
     ALSARawmidi.StreamEnum: stream_enumerators,
+    ALSARawmidi.InfoFlag:   info_flags,
 }
 
 for obj, types in types.items():
