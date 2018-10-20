@@ -21,7 +21,7 @@ an application of Linux sound subsystem and GLib/GObject.
 
 ## Requirements to build
 
-- Meson 0.32.0 or later
+- Meson 0.47.0 or later
 - Ninja
 - PyGObject (optional to run unit tests)
 - GTK-Doc 1.18-2 (optional to generate API documentation)
@@ -33,4 +33,23 @@ $ meson . build
 $ cd build
 $ ninja
 $ ninja install
+```
+
+## How to test
+
+```
+$ meson . build
+$ cd build
+$ meson test --list
+$ meson test
+```
+
+## How to run sample scripts
+
+```
+$ meson . build
+$ cd build
+$ ninja
+$ cd -
+$ ./samples/run.sh [ctl/seq/timer]
 ```
